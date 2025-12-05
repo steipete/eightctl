@@ -1,4 +1,4 @@
-# eightctl
+# 🛏️ eightctl — Control your sleep, from the terminal
 
 A modern Go CLI for Eight Sleep Pods. Control power/temperature, alarms, schedules, audio, base, autopilot, travel, household, and export sleep metrics. Includes a daemon for scheduled routines.
 
