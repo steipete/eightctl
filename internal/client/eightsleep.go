@@ -168,7 +168,11 @@ func (c *Client) authLegacyLogin(ctx context.Context) error {
 	if err != nil {
 		return err
 	}
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Connection", "keep-alive")
+	req.Header.Set("User-Agent", "okhttp/4.9.3")
+	req.Header.Set("Accept-Encoding", "gzip")
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
 		return err
@@ -242,7 +246,11 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 		return err
 	}
 	req.Header.Set("Authorization", "Bearer "+c.token)
-	req.Header.Set("Content-Type", "application/json")
+	req.Header.Set("Content-Type", "application/json; charset=UTF-8")
+	req.Header.Set("Accept", "application/json")
+	req.Header.Set("Connection", "keep-alive")
+	req.Header.Set("User-Agent", "okhttp/4.9.3")
+	req.Header.Set("Accept-Encoding", "gzip")
 
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
