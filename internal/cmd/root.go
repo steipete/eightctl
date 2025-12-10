@@ -105,7 +105,7 @@ func initConfig() {
 	}
 
 	if viper.GetBool("verbose") {
-		logger.SetLevel(log.DebugLevel)
+		log.SetLevel(log.DebugLevel)
 	}
 }
 
