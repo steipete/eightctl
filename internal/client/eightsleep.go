@@ -162,6 +162,8 @@ func (c *Client) authTokenEndpoint(ctx context.Context) error {
 	}
 	if err := tokencache.Save(c.token, c.tokenExp, c.UserID); err != nil {
 		log.Debug("failed to cache token", "error", err)
+	} else {
+		log.Debug("saved token to cache", "expires_at", c.tokenExp)
 	}
 	return nil
 }
@@ -217,24 +219,31 @@ func (c *Client) authLegacyLogin(ctx context.Context) error {
 	}
 	if err := tokencache.Save(c.token, c.tokenExp, c.UserID); err != nil {
 		log.Debug("failed to cache token", "error", err)
+	} else {
+		log.Debug("saved token to cache (legacy)", "expires_at", c.tokenExp)
 	}
 	return nil
 }
 
 func (c *Client) ensureToken(ctx context.Context) error {
 	if c.token != "" && time.Now().Before(c.tokenExp) {
+		log.Debug("using in-memory token", "expires_in", time.Until(c.tokenExp).Round(time.Second))
 		return nil
 	}
 	// Trust cached tokens without server validation. If token is invalid,
 	// the server will return 401 and we'll clear cache + re-authenticate.
 	if cached, err := tokencache.Load(); err == nil {
+		log.Debug("loaded token from cache", "expires_at", cached.ExpiresAt, "user_id", cached.UserID)
 		c.token = cached.Token
 		c.tokenExp = cached.ExpiresAt
 		if cached.UserID != "" && c.UserID == "" {
 			c.UserID = cached.UserID
 		}
 		return nil
+	} else {
+		log.Debug("no cached token", "reason", err)
 	}
+	log.Debug("authenticating with server")
 	return c.Authenticate(ctx)
 }
 
