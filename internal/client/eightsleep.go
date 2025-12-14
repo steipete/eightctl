@@ -65,8 +65,25 @@ func New(email, password, userID, clientID, clientSecret string) *Client {
 	}
 }
 
-// Authenticate fetches bearer token. Tries OAuth token endpoint first; falls back to /login used by app.
+// Authenticate fetches bearer token. First checks cache, then tries OAuth token endpoint, falls back to /login.
 func (c *Client) Authenticate(ctx context.Context) error {
+	// Check in-memory token first
+	if c.token != "" && time.Now().Before(c.tokenExp) {
+		log.Debug("using in-memory token", "expires_in", time.Until(c.tokenExp).Round(time.Second))
+		return nil
+	}
+	// Check cached token from keychain
+	if cached, err := tokencache.Load(c.Identity(), c.UserID); err == nil {
+		log.Debug("loaded token from cache", "expires_at", cached.ExpiresAt, "user_id", cached.UserID)
+		c.token = cached.Token
+		c.tokenExp = cached.ExpiresAt
+		if cached.UserID != "" && c.UserID == "" {
+			c.UserID = cached.UserID
+		}
+		return nil
+	}
+	// Authenticate with server
+	log.Debug("authenticating with server")
 	if err := c.authTokenEndpoint(ctx); err == nil {
 		return nil
 	}
