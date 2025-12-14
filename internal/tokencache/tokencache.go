@@ -51,8 +51,9 @@ func defaultOpenKeyring() (keyring.Keyring, error) {
 			keyring.WinCredBackend,
 			keyring.FileBackend,
 		},
-		FileDir:          filepath.Join(home, ".config", "eightctl", "keyring"),
-		FilePasswordFunc: filePassword,
+		FileDir:                  filepath.Join(home, ".config", "eightctl", "keyring"),
+		FilePasswordFunc:         filePassword,
+		KeychainTrustApplication: true,
 	})
 }
 
