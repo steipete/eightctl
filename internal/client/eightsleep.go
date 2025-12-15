@@ -310,6 +310,8 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 		return c.do(ctx, method, path, query, body, out)
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
+		b, _ := io.ReadAll(resp.Body)
+		log.Debug("api returned 401, clearing token", "method", method, "path", path, "body", string(b))
 		c.token = ""
 		_ = tokencache.Clear(c.Identity())
 		if err := c.ensureToken(ctx); err != nil {
