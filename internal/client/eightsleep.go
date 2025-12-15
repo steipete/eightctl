@@ -65,8 +65,25 @@ func New(email, password, userID, clientID, clientSecret string) *Client {
 	}
 }
 
-// Authenticate fetches bearer token. Tries OAuth token endpoint first; falls back to /login used by app.
+// Authenticate fetches bearer token. First checks cache, then tries OAuth token endpoint, falls back to /login.
 func (c *Client) Authenticate(ctx context.Context) error {
+	// Check in-memory token first
+	if c.token != "" && time.Now().Before(c.tokenExp) {
+		log.Debug("using in-memory token", "expires_in", time.Until(c.tokenExp).Round(time.Second))
+		return nil
+	}
+	// Check cached token from keychain
+	if cached, err := tokencache.Load(c.Identity(), c.UserID); err == nil {
+		log.Debug("loaded token from cache", "expires_at", cached.ExpiresAt, "user_id", cached.UserID)
+		c.token = cached.Token
+		c.tokenExp = cached.ExpiresAt
+		if cached.UserID != "" && c.UserID == "" {
+			c.UserID = cached.UserID
+		}
+		return nil
+	}
+	// Authenticate with server
+	log.Debug("authenticating with server")
 	if err := c.authTokenEndpoint(ctx); err == nil {
 		return nil
 	}
@@ -120,8 +137,8 @@ func (c *Client) authTokenEndpoint(ctx context.Context) error {
 		"grant_type":    "password",
 		"username":      c.Email,
 		"password":      c.Password,
-		"client_id":     "sleep-client",
-		"client_secret": "",
+		"client_id":     c.ClientID,
+		"client_secret": c.ClientSecret,
 	}
 	body, _ := json.Marshal(payload)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, authURL, bytes.NewReader(body))
@@ -182,7 +199,7 @@ func (c *Client) authLegacyLogin(ctx context.Context) error {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Connection", "keep-alive")
 	req.Header.Set("User-Agent", "okhttp/4.9.3")
-	req.Header.Set("Accept-Encoding", "gzip")
+	// Note: Don't set Accept-Encoding manually; Go's http.Transport handles gzip automatically
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
 		return err
@@ -281,7 +298,7 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Connection", "keep-alive")
 	req.Header.Set("User-Agent", "okhttp/4.9.3")
-	req.Header.Set("Accept-Encoding", "gzip")
+	// Note: Don't set Accept-Encoding manually; Go's http.Transport handles gzip automatically
 
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
@@ -293,6 +310,8 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 		return c.do(ctx, method, path, query, body, out)
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
+		b, _ := io.ReadAll(resp.Body)
+		log.Debug("api returned 401, clearing token", "method", method, "path", path, "body", string(b))
 		c.token = ""
 		_ = tokencache.Clear(c.Identity())
 		if err := c.ensureToken(ctx); err != nil {

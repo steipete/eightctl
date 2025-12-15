@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"github.com/99designs/keyring"
@@ -31,29 +32,57 @@ type Identity struct {
 	Email    string
 }
 
-var openKeyring = defaultOpenKeyring
+var (
+	// cachedRing holds the singleton keyring instance.
+	// Opening the keyring once and reusing it avoids repeated file system
+	// operations and potential issues with concurrent access.
+	cachedRing   keyring.Keyring
+	cachedRingMu sync.Mutex
+	openKeyring  = defaultOpenKeyring
+)
 
 // SetOpenKeyringForTest swaps the keyring opener; it returns a restore func.
 // Not safe for concurrent tests; intended for isolated test scenarios.
 func SetOpenKeyringForTest(fn func() (keyring.Keyring, error)) (restore func()) {
+	cachedRingMu.Lock()
+	defer cachedRingMu.Unlock()
 	prev := openKeyring
+	prevRing := cachedRing
 	openKeyring = fn
-	return func() { openKeyring = prev }
+	cachedRing = nil // Clear cache so test opener is used
+	return func() {
+		cachedRingMu.Lock()
+		defer cachedRingMu.Unlock()
+		openKeyring = prev
+		cachedRing = prevRing
+	}
 }
 
 func defaultOpenKeyring() (keyring.Keyring, error) {
+	cachedRingMu.Lock()
+	defer cachedRingMu.Unlock()
+
+	if cachedRing != nil {
+		return cachedRing, nil
+	}
+
 	home, _ := os.UserHomeDir()
-	return keyring.Open(keyring.Config{
+	ring, err := keyring.Open(keyring.Config{
 		ServiceName: serviceName,
+		// Use FileBackend only. The macOS Keychain backend has issues with
+		// adhoc-signed Go binaries: Set() succeeds but the item cannot be
+		// retrieved by Get() due to code signature/ACL problems.
 		AllowedBackends: []keyring.BackendType{
-			keyring.KeychainBackend,
-			keyring.SecretServiceBackend,
-			keyring.WinCredBackend,
 			keyring.FileBackend,
 		},
 		FileDir:          filepath.Join(home, ".config", "eightctl", "keyring"),
 		FilePasswordFunc: filePassword,
 	})
+	if err != nil {
+		return nil, err
+	}
+	cachedRing = ring
+	return cachedRing, nil
 }
 
 func filePassword(_ string) (string, error) {

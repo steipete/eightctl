@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
-	"github.com/steipete/eightctl/internal/client"
 	"github.com/steipete/eightctl/internal/config"
 	"github.com/steipete/eightctl/internal/tokencache"
 )
@@ -113,21 +112,30 @@ func initConfig() {
 }
 
 func requireAuthFields() error {
-	// Allow cached token to satisfy auth without requiring credentials.
-	c := client.New(
-		viper.GetString("email"),
-		viper.GetString("password"),
-		viper.GetString("user_id"),
-		viper.GetString("client_id"),
-		viper.GetString("client_secret"),
-	)
-	if cached, err := tokencache.Load(c.Identity(), viper.GetString("user_id")); err == nil {
-		if cached.UserID != "" {
+	// If email and password are set, we have credentials
+	if viper.GetString("email") != "" && viper.GetString("password") != "" {
+		return nil
+	}
+
+	// Otherwise, check if we have a cached token that can be used
+	// Use the same identity construction as Client to ensure key match
+	id := tokencache.Identity{
+		BaseURL:  "https://client-api.8slp.net/v1", // defaultBaseURL
+		ClientID: viper.GetString("client_id"),
+		Email:    viper.GetString("email"),
+	}
+	if id.ClientID == "" {
+		id.ClientID = "0894c7f33bb94800a03f1f4df13a4f38" // defaultClientID
+	}
+
+	if cached, err := tokencache.Load(id, viper.GetString("user_id")); err == nil {
+		if cached.UserID != "" && viper.GetString("user_id") == "" {
 			viper.Set("user_id", cached.UserID)
 		}
 		return nil
 	}
 
+	// No credentials and no cached token
 	missing := []string{}
 	if viper.GetString("email") == "" {
 		missing = append(missing, "email")
