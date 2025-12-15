@@ -137,8 +137,8 @@ func (c *Client) authTokenEndpoint(ctx context.Context) error {
 		"grant_type":    "password",
 		"username":      c.Email,
 		"password":      c.Password,
-		"client_id":     "sleep-client",
-		"client_secret": "",
+		"client_id":     c.ClientID,
+		"client_secret": c.ClientSecret,
 	}
 	body, _ := json.Marshal(payload)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, authURL, bytes.NewReader(body))
@@ -199,7 +199,7 @@ func (c *Client) authLegacyLogin(ctx context.Context) error {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Connection", "keep-alive")
 	req.Header.Set("User-Agent", "okhttp/4.9.3")
-	req.Header.Set("Accept-Encoding", "gzip")
+	// Note: Don't set Accept-Encoding manually; Go's http.Transport handles gzip automatically
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
 		return err
@@ -298,7 +298,7 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Connection", "keep-alive")
 	req.Header.Set("User-Agent", "okhttp/4.9.3")
-	req.Header.Set("Accept-Encoding", "gzip")
+	// Note: Don't set Accept-Encoding manually; Go's http.Transport handles gzip automatically
 
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
