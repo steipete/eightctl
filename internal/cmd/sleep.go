@@ -37,21 +37,30 @@ var sleepDayCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		// Convert durations from seconds to hours for readability
+		durationHrs := day.Duration / 3600
+		deepHrs := day.DeepDuration / 3600
+		remHrs := day.RemDuration / 3600
+		lightHrs := day.LightDuration / 3600
+
 		rows := []map[string]any{
 			{
-				"date":           day.Date,
-				"score":          day.Score,
-				"tnt":            day.Tnt,
-				"resp_rate":      day.Respiratory,
-				"heart_rate":     day.HeartRate,
-				"duration":       day.Duration,
-				"latency_asleep": day.LatencyAsleep,
-				"latency_out":    day.LatencyOut,
-				"hrv_score":      day.SleepQuality.HRV.Score,
+				"date":         day.Date,
+				"score":        day.Score,
+				"duration_hrs": float64(int(durationHrs*10)) / 10,
+				"deep_hrs":     float64(int(deepHrs*10)) / 10,
+				"rem_hrs":      float64(int(remHrs*10)) / 10,
+				"light_hrs":    float64(int(lightHrs*10)) / 10,
+				"sleep_start":  day.SleepStart,
+				"sleep_end":    day.SleepEnd,
+				"tnt":          day.Tnt,
+				"rhr":          day.SleepQuality.HeartRate.Current,
+				"hrv":          day.SleepQuality.HRV.Current,
+				"resp_rate":    day.SleepQuality.Respiratory.Current,
 			},
 		}
 		rows = output.FilterFields(rows, viper.GetStringSlice("fields"))
-		return output.Print(output.Format(viper.GetString("output")), []string{"date", "score", "duration", "latency_asleep", "latency_out", "tnt", "resp_rate", "heart_rate", "hrv_score"}, rows)
+		return output.Print(output.Format(viper.GetString("output")), []string{"date", "score", "duration_hrs", "deep_hrs", "rem_hrs", "light_hrs", "rhr", "hrv", "resp_rate", "tnt", "sleep_start", "sleep_end"}, rows)
 	},
 }
 

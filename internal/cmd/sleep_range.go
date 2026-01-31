@@ -19,8 +19,8 @@ var sleepRangeCmd = &cobra.Command{
 		if err := requireAuthFields(); err != nil {
 			return err
 		}
-		from := viper.GetString("from")
-		to := viper.GetString("to")
+		from, _ := cmd.Flags().GetString("from")
+		to, _ := cmd.Flags().GetString("to")
 		if from == "" || to == "" {
 			return fmt.Errorf("--from and --to are required")
 		}
@@ -47,18 +47,24 @@ var sleepRangeCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
+				// Convert durations from seconds to hours for readability
+			durationHrs := day.Duration / 3600
+			deepHrs := day.DeepDuration / 3600
+			remHrs := day.RemDuration / 3600
+
 			rows = append(rows, map[string]any{
-				"date":       day.Date,
-				"score":      day.Score,
-				"duration":   day.Duration,
-				"tnt":        day.Tnt,
-				"resp_rate":  day.Respiratory,
-				"heart_rate": day.HeartRate,
-				"hrv_score":  day.SleepQuality.HRV.Score,
+				"date":         day.Date,
+				"score":        day.Score,
+				"duration_hrs": float64(int(durationHrs*10)) / 10,
+				"deep_hrs":     float64(int(deepHrs*10)) / 10,
+				"rem_hrs":      float64(int(remHrs*10)) / 10,
+				"tnt":          day.Tnt,
+				"rhr":          day.SleepQuality.HeartRate.Current,
+				"hrv":          day.SleepQuality.HRV.Current,
 			})
 		}
 		rows = output.FilterFields(rows, viper.GetStringSlice("fields"))
-		headers := []string{"date", "score", "duration", "tnt", "resp_rate", "heart_rate", "hrv_score"}
+		headers := []string{"date", "score", "duration_hrs", "deep_hrs", "rem_hrs", "rhr", "hrv", "tnt"}
 		if len(viper.GetStringSlice("fields")) > 0 {
 			headers = viper.GetStringSlice("fields")
 		}
