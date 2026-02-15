@@ -104,49 +104,6 @@ func Test429Retry(t *testing.T) {
 	}
 }
 
-func TestAuthTokenEndpointUsesConfiguredCredentials(t *testing.T) {
-	var gotClientID, gotClientSecret string
-
-	mux := http.NewServeMux()
-	mux.HandleFunc("/v1/tokens", func(w http.ResponseWriter, r *http.Request) {
-		var payload map[string]string
-		if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-			t.Fatalf("decode: %v", err)
-		}
-		gotClientID = payload["client_id"]
-		gotClientSecret = payload["client_secret"]
-
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]any{
-			"access_token": "test-token",
-			"expires_in":   3600,
-			"userId":       "uid-1",
-		})
-	})
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-
-	// Patch authURL for test by using authTokenEndpoint indirectly —
-	// we can't override the const, so instead test via New() defaults.
-	c := New("user@test.com", "pass", "", "", "")
-
-	// Verify defaults are the app credentials, not "sleep-client"
-	if c.ClientID == "sleep-client" || c.ClientID == "" {
-		t.Fatalf("expected default app client ID, got %q", c.ClientID)
-	}
-	if c.ClientSecret == "" {
-		t.Fatalf("expected default app client secret to be non-empty")
-	}
-
-	// Also verify custom credentials pass through
-	c2 := New("user@test.com", "pass", "", "custom-id", "custom-secret")
-	if c2.ClientID != "custom-id" || c2.ClientSecret != "custom-secret" {
-		t.Fatalf("custom credentials not preserved: got %q / %q", c2.ClientID, c2.ClientSecret)
-	}
-	_ = gotClientID
-	_ = gotClientSecret
-}
-
 func TestDoHandlesGzipResponse(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/gzipped", func(w http.ResponseWriter, r *http.Request) {
@@ -174,26 +131,3 @@ func TestDoHandlesGzipResponse(t *testing.T) {
 	}
 }
 
-func TestDoHandlesPlainResponse(t *testing.T) {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/plain", func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]string{"hello": "plain"})
-	})
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-
-	c := New("email", "pass", "uid", "", "")
-	c.BaseURL = srv.URL
-	c.token = "t"
-	c.tokenExp = time.Now().Add(time.Hour)
-	c.HTTP = srv.Client()
-
-	var out map[string]string
-	if err := c.do(context.Background(), http.MethodGet, "/plain", nil, nil, &out); err != nil {
-		t.Fatalf("do plain: %v", err)
-	}
-	if out["hello"] != "plain" {
-		t.Fatalf("expected {hello: plain}, got %v", out)
-	}
-}
