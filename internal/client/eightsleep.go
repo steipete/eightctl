@@ -255,7 +255,13 @@ func (c *Client) requireUser(ctx context.Context) error {
 	return c.EnsureUserID(ctx)
 }
 
+const maxRetries = 3
+
 func (c *Client) do(ctx context.Context, method, path string, query url.Values, body any, out any) error {
+	return c.doRetry(ctx, method, path, query, body, out, 0)
+}
+
+func (c *Client) doRetry(ctx context.Context, method, path string, query url.Values, body any, out any, attempt int) error {
 	if err := c.ensureToken(ctx); err != nil {
 		return err
 	}
@@ -291,16 +297,22 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusTooManyRequests {
-		time.Sleep(2 * time.Second)
-		return c.do(ctx, method, path, query, body, out)
+		if attempt >= maxRetries {
+			return fmt.Errorf("rate limited after %d retries: %s %s", maxRetries, method, path)
+		}
+		time.Sleep(time.Duration(2*(attempt+1)) * time.Second)
+		return c.doRetry(ctx, method, path, query, body, out, attempt+1)
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
+		if attempt >= maxRetries {
+			return fmt.Errorf("unauthorized after %d retries: %s %s", maxRetries, method, path)
+		}
 		c.token = ""
 		_ = tokencache.Clear(c.Identity())
 		if err := c.ensureToken(ctx); err != nil {
 			return err
 		}
-		return c.do(ctx, method, path, query, body, out)
+		return c.doRetry(ctx, method, path, query, body, out, attempt+1)
 	}
 	if resp.StatusCode >= 300 {
 		b, _ := io.ReadAll(resp.Body)
