@@ -182,7 +182,6 @@ func (c *Client) authLegacyLogin(ctx context.Context) error {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Connection", "keep-alive")
 	req.Header.Set("User-Agent", "okhttp/4.9.3")
-	req.Header.Set("Accept-Encoding", "gzip")
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
 		return err
@@ -281,7 +280,10 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Connection", "keep-alive")
 	req.Header.Set("User-Agent", "okhttp/4.9.3")
-	req.Header.Set("Accept-Encoding", "gzip")
+	// Removed explicit Accept-Encoding: gzip — Go's http.Transport handles
+	// gzip transparently when the header is not set manually. Setting it
+	// explicitly disables automatic decompression, causing raw gzip bytes
+	// to reach the JSON decoder.
 
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
