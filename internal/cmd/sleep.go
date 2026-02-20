@@ -25,7 +25,7 @@ var sleepDayCmd = &cobra.Command{
 		if err := requireAuthFields(); err != nil {
 			return err
 		}
-		date := viper.GetString("date")
+		date, _ := cmd.Flags().GetString("date")
 		if date == "" {
 			date = time.Now().Format("2006-01-02")
 		}
@@ -34,7 +34,13 @@ var sleepDayCmd = &cobra.Command{
 			tz = time.Local.String()
 		}
 		cl := client.New(viper.GetString("email"), viper.GetString("password"), viper.GetString("user_id"), viper.GetString("client_id"), viper.GetString("client_secret"))
-		day, err := cl.GetSleepDay(context.Background(), date, tz)
+		ctx := context.Background()
+		side, _ := cmd.Flags().GetString("side")
+		userID, err := cl.UserIDForSide(ctx, side)
+		if err != nil {
+			return err
+		}
+		day, err := cl.GetSleepDayForUser(ctx, userID, date, tz)
 		if err != nil {
 			return err
 		}
@@ -82,6 +88,6 @@ var sleepDayCmd = &cobra.Command{
 
 func init() {
 	sleepCmd.PersistentFlags().String("date", "", "date YYYY-MM-DD (default today)")
-	viper.BindPFlag("date", sleepCmd.PersistentFlags().Lookup("date"))
+	sleepCmd.PersistentFlags().String("side", "", "bed side: left, right, partner, or me (default: me)")
 	sleepCmd.AddCommand(sleepDayCmd)
 }

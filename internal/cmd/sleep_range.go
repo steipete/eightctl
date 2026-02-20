@@ -42,9 +42,15 @@ var sleepRangeCmd = &cobra.Command{
 			tz = time.Local.String()
 		}
 		cl := client.New(viper.GetString("email"), viper.GetString("password"), viper.GetString("user_id"), viper.GetString("client_id"), viper.GetString("client_secret"))
+		ctx := context.Background()
+		side, _ := cmd.Flags().GetString("side")
+		userID, err := cl.UserIDForSide(ctx, side)
+		if err != nil {
+			return err
+		}
 		rows := []map[string]any{}
 		for d := start; !d.After(end); d = d.Add(24 * time.Hour) {
-			day, err := cl.GetSleepDay(context.Background(), d.Format(layout), tz)
+			day, err := cl.GetSleepDayForUser(ctx, userID, d.Format(layout), tz)
 			if err != nil {
 				return err
 			}

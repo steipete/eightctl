@@ -120,8 +120,8 @@ func (c *Client) authTokenEndpoint(ctx context.Context) error {
 		"grant_type":    "password",
 		"username":      c.Email,
 		"password":      c.Password,
-		"client_id":     "sleep-client",
-		"client_secret": "",
+		"client_id":     c.ClientID,
+		"client_secret": c.ClientSecret,
 	}
 	body, _ := json.Marshal(payload)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, authURL, bytes.NewReader(body))
@@ -480,10 +480,18 @@ type Stage struct {
 	Duration float64 `json:"duration"`
 }
 
-// GetSleepDay fetches sleep trends for a date (YYYY-MM-DD).
+// GetSleepDay fetches sleep trends for a date (YYYY-MM-DD) for the authenticated user.
 func (c *Client) GetSleepDay(ctx context.Context, date string, timezone string) (*SleepDay, error) {
+	return c.GetSleepDayForUser(ctx, "", date, timezone)
+}
+
+// GetSleepDayForUser fetches sleep trends for a specific user ID. Empty userID uses the authenticated user.
+func (c *Client) GetSleepDayForUser(ctx context.Context, userID, date, timezone string) (*SleepDay, error) {
 	if err := c.requireUser(ctx); err != nil {
 		return nil, err
+	}
+	if userID == "" {
+		userID = c.UserID
 	}
 	q := url.Values{}
 	q.Set("tz", timezone)
@@ -492,7 +500,7 @@ func (c *Client) GetSleepDay(ctx context.Context, date string, timezone string) 
 	q.Set("include-main", "false")
 	q.Set("include-all-sessions", "true")
 	q.Set("model-version", "v2")
-	path := fmt.Sprintf("/users/%s/trends", c.UserID)
+	path := fmt.Sprintf("/users/%s/trends", userID)
 	var res struct {
 		Days []SleepDay `json:"days"`
 	}
