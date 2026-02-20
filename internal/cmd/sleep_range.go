@@ -3,6 +3,7 @@ package cmd
 import (
 	"context"
 	"fmt"
+	"math"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -47,24 +48,26 @@ var sleepRangeCmd = &cobra.Command{
 			if err != nil {
 				return err
 			}
-			// Convert durations from seconds to hours for readability
-			durationHrs := day.Duration / 3600
-			deepHrs := day.DeepDuration / 3600
-			remHrs := day.RemDuration / 3600
-
+			r1 := func(v float64) float64 { return math.Round(v*10) / 10 }
 			rows = append(rows, map[string]any{
 				"date":         day.Date,
 				"score":        day.Score,
-				"duration_hrs": float64(int(durationHrs*10)) / 10,
-				"deep_hrs":     float64(int(deepHrs*10)) / 10,
-				"rem_hrs":      float64(int(remHrs*10)) / 10,
-				"tnt":          day.Tnt,
+				"quality":      day.SleepQuality.Total,
+				"duration_hrs": r1(day.Duration / 3600),
+				"deep_hrs":     r1(day.DeepDuration / 3600),
+				"rem_hrs":      r1(day.RemDuration / 3600),
+				"awake_min":    r1((day.PresenceDuration - day.Duration) / 60),
+				"disturbances": day.Tnt,
 				"rhr":          day.SleepQuality.HeartRate.Current,
+				"avg_rhr":      day.SleepQuality.HeartRate.Average,
+				"lowest_hr":    day.LowestHeartRate(),
 				"hrv":          day.SleepQuality.HRV.Current,
+				"breath_rate":  day.SleepQuality.Respiratory.Current,
+				"snore_min":    r1(day.SnoreDuration / 60),
 			})
 		}
 		rows = output.FilterFields(rows, viper.GetStringSlice("fields"))
-		headers := []string{"date", "score", "duration_hrs", "deep_hrs", "rem_hrs", "rhr", "hrv", "tnt"}
+		headers := []string{"date", "score", "quality", "duration_hrs", "deep_hrs", "rem_hrs", "awake_min", "disturbances", "rhr", "avg_rhr", "lowest_hr", "hrv", "breath_rate", "snore_min"}
 		if len(viper.GetStringSlice("fields")) > 0 {
 			headers = viper.GetStringSlice("fields")
 		}

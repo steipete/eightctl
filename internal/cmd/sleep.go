@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"math"
 	"time"
 
 	"github.com/spf13/cobra"
@@ -37,30 +38,45 @@ var sleepDayCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		// Convert durations from seconds to hours for readability
-		durationHrs := day.Duration / 3600
-		deepHrs := day.DeepDuration / 3600
-		remHrs := day.RemDuration / 3600
-		lightHrs := day.LightDuration / 3600
+		// Convert durations from seconds to hours/minutes for readability
+		r1 := func(v float64) float64 { return math.Round(v*10) / 10 }
+		durationHrs := r1(day.Duration / 3600)
+		deepHrs := r1(day.DeepDuration / 3600)
+		remHrs := r1(day.RemDuration / 3600)
+		lightHrs := r1(day.LightDuration / 3600)
+		awakeMin := r1((day.PresenceDuration - day.Duration) / 60)
+		snoreMin := r1(day.SnoreDuration / 60)
 
 		rows := []map[string]any{
 			{
 				"date":         day.Date,
 				"score":        day.Score,
-				"duration_hrs": float64(int(durationHrs*10)) / 10,
-				"deep_hrs":     float64(int(deepHrs*10)) / 10,
-				"rem_hrs":      float64(int(remHrs*10)) / 10,
-				"light_hrs":    float64(int(lightHrs*10)) / 10,
+				"quality":      day.SleepQuality.Total,
+				"duration_hrs": durationHrs,
+				"deep_hrs":     deepHrs,
+				"rem_hrs":      remHrs,
+				"light_hrs":    lightHrs,
+				"awake_min":    awakeMin,
+				"disturbances": day.Tnt,
+				"rhr":          day.SleepQuality.HeartRate.Current,
+				"avg_rhr":      day.SleepQuality.HeartRate.Average,
+				"lowest_hr":    day.LowestHeartRate(),
+				"hrv":          day.SleepQuality.HRV.Current,
+				"breath_rate":  day.SleepQuality.Respiratory.Current,
+				"snore_min":    snoreMin,
 				"sleep_start":  day.SleepStart,
 				"sleep_end":    day.SleepEnd,
-				"tnt":          day.Tnt,
-				"rhr":          day.SleepQuality.HeartRate.Current,
-				"hrv":          day.SleepQuality.HRV.Current,
-				"resp_rate":    day.SleepQuality.Respiratory.Current,
 			},
 		}
 		rows = output.FilterFields(rows, viper.GetStringSlice("fields"))
-		return output.Print(output.Format(viper.GetString("output")), []string{"date", "score", "duration_hrs", "deep_hrs", "rem_hrs", "light_hrs", "rhr", "hrv", "resp_rate", "tnt", "sleep_start", "sleep_end"}, rows)
+		return output.Print(output.Format(viper.GetString("output")), []string{
+			"date", "score", "quality", "duration_hrs",
+			"deep_hrs", "rem_hrs", "light_hrs",
+			"awake_min", "disturbances",
+			"rhr", "avg_rhr", "lowest_hr",
+			"hrv", "breath_rate", "snore_min",
+			"sleep_start", "sleep_end",
+		}, rows)
 	},
 }
 

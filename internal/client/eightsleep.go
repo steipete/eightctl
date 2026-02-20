@@ -257,6 +257,11 @@ func (c *Client) requireUser(ctx context.Context) error {
 
 const maxRetries = 3
 
+// Do is an exported wrapper around do for debugging/tooling.
+func (c *Client) Do(ctx context.Context, method, path string, query url.Values, body any, out any) error {
+	return c.do(ctx, method, path, query, body, out)
+}
+
 func (c *Client) do(ctx context.Context, method, path string, query url.Values, body any, out any) error {
 	return c.doRetry(ctx, method, path, query, body, out, 0)
 }
@@ -387,20 +392,68 @@ func (c *Client) GetStatus(ctx context.Context) (*TempStatus, error) {
 
 // SleepDay represents aggregated sleep metrics for a day.
 type SleepDay struct {
-	Date          string            `json:"day"`
-	Score         float64           `json:"score"`
-	Tnt           int               `json:"tnt"`
-	Duration      float64           `json:"sleepDuration"`
-	DeepDuration  float64           `json:"deepDuration"`
-	RemDuration   float64           `json:"remDuration"`
-	LightDuration float64           `json:"lightDuration"`
-	DeepPercent   float64           `json:"deepPercent"`
-	RemPercent    float64           `json:"remPercent"`
-	PresenceStart string            `json:"presenceStart"`
-	PresenceEnd   string            `json:"presenceEnd"`
-	SleepStart    string            `json:"sleepStart"`
-	SleepEnd      string            `json:"sleepEnd"`
-	SleepQuality  SleepQualityScore `json:"sleepQualityScore"`
+	Date              string            `json:"day"`
+	Score             float64           `json:"score"`
+	Tnt               int               `json:"tnt"`
+	Duration          float64           `json:"sleepDuration"`
+	PresenceDuration  float64           `json:"presenceDuration"`
+	DeepDuration      float64           `json:"deepDuration"`
+	RemDuration       float64           `json:"remDuration"`
+	LightDuration     float64           `json:"lightDuration"`
+	DeepPercent       float64           `json:"deepPercent"`
+	RemPercent        float64           `json:"remPercent"`
+	PresenceStart     string            `json:"presenceStart"`
+	PresenceEnd       string            `json:"presenceEnd"`
+	SleepStart        string            `json:"sleepStart"`
+	SleepEnd          string            `json:"sleepEnd"`
+	SnoreDuration     float64           `json:"snoreDuration"`
+	SnorePercent      float64           `json:"snorePercent"`
+	HeavySnoreDuration float64          `json:"heavySnoreDuration"`
+	HeavySnorePercent float64           `json:"heavySnorePercent"`
+	SleepQuality      SleepQualityScore `json:"sleepQualityScore"`
+	Sessions          []SleepSession    `json:"sessions"`
+}
+
+// SleepSession contains per-session data including timeseries.
+type SleepSession struct {
+	ID         string          `json:"id"`
+	Timeseries SleepTimeseries `json:"timeseries"`
+}
+
+// SleepTimeseries contains per-minute sensor readings as [timestamp, value] pairs.
+type SleepTimeseries struct {
+	HeartRate [][]any `json:"heartRate"`
+	HRV       [][]any `json:"hrv"`
+}
+
+// LowestHeartRate returns the minimum heart rate value from session timeseries.
+func (d *SleepDay) LowestHeartRate() float64 {
+	min := 0.0
+	for _, sess := range d.Sessions {
+		for _, entry := range sess.Timeseries.HeartRate {
+			if len(entry) == 2 {
+				if val, ok := toFloat(entry[1]); ok && val > 0 {
+					if min == 0 || val < min {
+						min = val
+					}
+				}
+			}
+		}
+	}
+	return min
+}
+
+func toFloat(v any) (float64, bool) {
+	switch n := v.(type) {
+	case float64:
+		return n, true
+	case int:
+		return float64(n), true
+	case int64:
+		return float64(n), true
+	default:
+		return 0, false
+	}
 }
 
 // SleepQualityScore contains detailed sleep quality metrics from the API.
