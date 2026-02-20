@@ -387,23 +387,38 @@ func (c *Client) GetStatus(ctx context.Context) (*TempStatus, error) {
 
 // SleepDay represents aggregated sleep metrics for a day.
 type SleepDay struct {
-	Date          string  `json:"day"`
-	Score         float64 `json:"score"`
-	Tnt           int     `json:"tnt"`
-	Respiratory   float64 `json:"respiratoryRate"`
-	HeartRate     float64 `json:"heartRate"`
-	LatencyAsleep float64 `json:"latencyAsleepSeconds"`
-	LatencyOut    float64 `json:"latencyOutSeconds"`
-	Duration      float64 `json:"sleepDurationSeconds"`
-	Stages        []Stage `json:"stages"`
-	SleepQuality  struct {
-		HRV struct {
-			Score float64 `json:"score"`
-		} `json:"hrv"`
-		Resp struct {
-			Score float64 `json:"score"`
-		} `json:"respiratoryRate"`
-	} `json:"sleepQualityScore"`
+	Date          string            `json:"day"`
+	Score         float64           `json:"score"`
+	Tnt           int               `json:"tnt"`
+	Duration      float64           `json:"sleepDuration"`
+	DeepDuration  float64           `json:"deepDuration"`
+	RemDuration   float64           `json:"remDuration"`
+	LightDuration float64           `json:"lightDuration"`
+	DeepPercent   float64           `json:"deepPercent"`
+	RemPercent    float64           `json:"remPercent"`
+	PresenceStart string            `json:"presenceStart"`
+	PresenceEnd   string            `json:"presenceEnd"`
+	SleepStart    string            `json:"sleepStart"`
+	SleepEnd      string            `json:"sleepEnd"`
+	SleepQuality  SleepQualityScore `json:"sleepQualityScore"`
+}
+
+// SleepQualityScore contains detailed sleep quality metrics from the API.
+type SleepQualityScore struct {
+	Total       float64     `json:"total"`
+	HRV         SleepMetric `json:"hrv"`
+	HeartRate   SleepMetric `json:"heartRate"`
+	Respiratory SleepMetric `json:"respiratoryRate"`
+	Deep        SleepMetric `json:"deep"`
+	Rem         SleepMetric `json:"rem"`
+	Waso        SleepMetric `json:"waso"`
+}
+
+// SleepMetric represents a single sleep metric with current value and statistics.
+type SleepMetric struct {
+	Current float64 `json:"current"`
+	Average float64 `json:"average"`
+	Score   float64 `json:"score"`
 }
 
 // Stage represents sleep stage duration.
