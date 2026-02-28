@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -17,7 +18,8 @@ import (
 )
 
 const (
-	defaultBaseURL = "https://client-api.8slp.net/v1"
+	defaultBaseURL    = "https://client-api.8slp.net/v1"
+	defaultAppBaseURL = "https://app-api.8slp.net/v1"
 	authURL        = "https://auth-api.8slp.net/v1/tokens"
 	// Extracted from the official Eight Sleep Android app v7.39.17 (public client creds)
 	defaultClientID     = "0894c7f33bb94800a03f1f4df13a4f38"
@@ -34,7 +36,8 @@ type Client struct {
 	DeviceID     string
 
 	HTTP     *http.Client
-	BaseURL  string
+	BaseURL    string
+	AppBaseURL string
 	token    string
 	tokenExp time.Time
 }
@@ -62,6 +65,7 @@ func New(email, password, userID, clientID, clientSecret string) *Client {
 		ClientSecret: clientSecret,
 		HTTP:         &http.Client{Timeout: 20 * time.Second, Transport: tr},
 		BaseURL:      defaultBaseURL,
+		AppBaseURL:   defaultAppBaseURL,
 	}
 }
 
@@ -120,8 +124,8 @@ func (c *Client) authTokenEndpoint(ctx context.Context) error {
 		"grant_type":    "password",
 		"username":      c.Email,
 		"password":      c.Password,
-		"client_id":     "sleep-client",
-		"client_secret": "",
+		"client_id":     c.ClientID,
+		"client_secret": c.ClientSecret,
 	}
 	body, _ := json.Marshal(payload)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, authURL, bytes.NewReader(body))
@@ -288,6 +292,14 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 		return err
 	}
 	defer resp.Body.Close()
+	var reader io.Reader = resp.Body
+	if resp.Header.Get("Content-Encoding") == "gzip" {
+		gr, gerr := gzip.NewReader(resp.Body)
+		if gerr == nil {
+			defer gr.Close()
+			reader = gr
+		}
+	}
 	if resp.StatusCode == http.StatusTooManyRequests {
 		time.Sleep(2 * time.Second)
 		return c.do(ctx, method, path, query, body, out)
@@ -301,13 +313,20 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 		return c.do(ctx, method, path, query, body, out)
 	}
 	if resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(resp.Body)
+		b, _ := io.ReadAll(reader)
 		return fmt.Errorf("api %s %s: %s", method, path, string(b))
 	}
 	if out != nil {
-		return json.NewDecoder(resp.Body).Decode(out)
+		return json.NewDecoder(reader).Decode(out)
 	}
 	return nil
+}
+
+func (c *Client) doApp(ctx context.Context, method, path string, query url.Values, body any, out any) error {
+	saved := c.BaseURL
+	c.BaseURL = c.AppBaseURL
+	defer func() { c.BaseURL = saved }()
+	return c.do(ctx, method, path, query, body, out)
 }
 
 // TurnOn powers device on.
@@ -331,7 +350,7 @@ func (c *Client) setPower(ctx context.Context, on bool) error {
 
 func (c *Client) Identity() tokencache.Identity {
 	return tokencache.Identity{
-		BaseURL:  c.BaseURL,
+		BaseURL:    c.BaseURL,
 		ClientID: c.ClientID,
 		Email:    c.Email,
 	}
