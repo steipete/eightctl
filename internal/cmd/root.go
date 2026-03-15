@@ -58,6 +58,7 @@ func init() {
 
 	rootCmd.AddCommand(onCmd)
 	rootCmd.AddCommand(offCmd)
+	rootCmd.AddCommand(awayCmd)
 	rootCmd.AddCommand(tempCmd)
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(tracksCmd)

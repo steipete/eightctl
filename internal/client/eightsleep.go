@@ -19,6 +19,7 @@ import (
 
 const (
 	defaultBaseURL = "https://client-api.8slp.net/v1"
+	appAPIBaseURL  = "https://app-api.8slp.net/v1"
 	// Extracted from the official Eight Sleep Android app v7.39.17 (public client creds)
 	defaultClientID     = "0894c7f33bb94800a03f1f4df13a4f38"
 	defaultClientSecret = "f0954a3ed5763ba3d06834c73731a32f15f168f47d4f164751275def86db0c76"
@@ -260,6 +261,14 @@ func (c *Client) requireUser(ctx context.Context) error {
 }
 
 func (c *Client) do(ctx context.Context, method, path string, query url.Values, body any, out any) error {
+	u := c.BaseURL + path
+	if len(query) > 0 {
+		u += "?" + query.Encode()
+	}
+	return c.doURL(ctx, method, u, body, out)
+}
+
+func (c *Client) doURL(ctx context.Context, method, u string, body any, out any) error {
 	if err := c.ensureToken(ctx); err != nil {
 		return err
 	}
@@ -270,10 +279,6 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 			return err
 		}
 		rdr = bytes.NewReader(b)
-	}
-	u := c.BaseURL + path
-	if len(query) > 0 {
-		u += "?" + query.Encode()
 	}
 	req, err := http.NewRequestWithContext(ctx, method, u, rdr)
 	if err != nil {
@@ -293,7 +298,7 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusTooManyRequests {
 		time.Sleep(2 * time.Second)
-		return c.do(ctx, method, path, query, body, out)
+		return c.doURL(ctx, method, u, body, out)
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
 		c.token = ""
@@ -301,11 +306,11 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 		if err := c.ensureToken(ctx); err != nil {
 			return err
 		}
-		return c.do(ctx, method, path, query, body, out)
+		return c.doURL(ctx, method, u, body, out)
 	}
 	if resp.StatusCode >= 300 {
 		b, _ := io.ReadAll(resp.Body)
-		return fmt.Errorf("api %s %s: %s", method, path, string(b))
+		return fmt.Errorf("api %s %s: %s", method, u, string(b))
 	}
 	if out != nil {
 		r := io.Reader(resp.Body)
@@ -360,6 +365,28 @@ func (c *Client) SetTemperature(ctx context.Context, level int) error {
 	path := fmt.Sprintf("/users/%s/temperature", c.UserID)
 	body := map[string]int{"currentLevel": level}
 	return c.do(ctx, http.MethodPut, path, nil, body, nil)
+}
+
+// SetAwayMode activates or deactivates away mode for a specific user ID.
+// The away-mode endpoint lives on the app API (app-api.8slp.net), not the
+// client API used by most other endpoints.
+// If userID is empty, it defaults to the authenticated user.
+func (c *Client) SetAwayMode(ctx context.Context, userID string, away bool) error {
+	if userID == "" {
+		if err := c.requireUser(ctx); err != nil {
+			return err
+		}
+		userID = c.UserID
+	}
+	ts := time.Now().UTC().Add(-24 * time.Hour).Format("2006-01-02T15:04:05.000Z")
+	var payload map[string]any
+	if away {
+		payload = map[string]any{"awayPeriod": map[string]string{"start": ts}}
+	} else {
+		payload = map[string]any{"awayPeriod": map[string]string{"end": ts}}
+	}
+	u := fmt.Sprintf("%s/users/%s/away-mode", appAPIBaseURL, userID)
+	return c.doURL(ctx, http.MethodPut, u, payload, nil)
 }
 
 // TempStatus represents current temperature state payload.
