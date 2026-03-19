@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -120,8 +121,8 @@ func (c *Client) authTokenEndpoint(ctx context.Context) error {
 		"grant_type":    "password",
 		"username":      c.Email,
 		"password":      c.Password,
-		"client_id":     "sleep-client",
-		"client_secret": "",
+		"client_id":     c.ClientID,
+		"client_secret": c.ClientSecret,
 	}
 	body, _ := json.Marshal(payload)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, authURL, bytes.NewReader(body))
@@ -182,7 +183,6 @@ func (c *Client) authLegacyLogin(ctx context.Context) error {
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Connection", "keep-alive")
 	req.Header.Set("User-Agent", "okhttp/4.9.3")
-	req.Header.Set("Accept-Encoding", "gzip")
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
 		return err
@@ -257,6 +257,10 @@ func (c *Client) requireUser(ctx context.Context) error {
 }
 
 func (c *Client) do(ctx context.Context, method, path string, query url.Values, body any, out any) error {
+	return c.doWithRetry(ctx, method, path, query, body, out, 3)
+}
+
+func (c *Client) doWithRetry(ctx context.Context, method, path string, query url.Values, body any, out any, retriesLeft int) error {
 	if err := c.ensureToken(ctx); err != nil {
 		return err
 	}
@@ -281,7 +285,6 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 	req.Header.Set("Accept", "application/json")
 	req.Header.Set("Connection", "keep-alive")
 	req.Header.Set("User-Agent", "okhttp/4.9.3")
-	req.Header.Set("Accept-Encoding", "gzip")
 
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
@@ -289,23 +292,38 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusTooManyRequests {
+		if retriesLeft <= 0 {
+			return fmt.Errorf("api %s %s: too many requests (rate limited)", method, path)
+		}
 		time.Sleep(2 * time.Second)
-		return c.do(ctx, method, path, query, body, out)
+		return c.doWithRetry(ctx, method, path, query, body, out, retriesLeft-1)
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
+		if retriesLeft <= 0 {
+			return fmt.Errorf("api %s %s: unauthorized", method, path)
+		}
 		c.token = ""
 		_ = tokencache.Clear(c.Identity())
 		if err := c.ensureToken(ctx); err != nil {
 			return err
 		}
-		return c.do(ctx, method, path, query, body, out)
+		return c.doWithRetry(ctx, method, path, query, body, out, retriesLeft-1)
 	}
 	if resp.StatusCode >= 300 {
 		b, _ := io.ReadAll(resp.Body)
 		return fmt.Errorf("api %s %s: %s", method, path, string(b))
 	}
 	if out != nil {
-		return json.NewDecoder(resp.Body).Decode(out)
+		body := resp.Body
+		if resp.Header.Get("Content-Encoding") == "gzip" {
+			gr, err := gzip.NewReader(body)
+			if err != nil {
+				return fmt.Errorf("gzip reader: %w", err)
+			}
+			defer gr.Close()
+			body = gr
+		}
+		return json.NewDecoder(body).Decode(out)
 	}
 	return nil
 }

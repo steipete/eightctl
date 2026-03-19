@@ -46,9 +46,6 @@ func defaultOpenKeyring() (keyring.Keyring, error) {
 	return keyring.Open(keyring.Config{
 		ServiceName: serviceName,
 		AllowedBackends: []keyring.BackendType{
-			keyring.KeychainBackend,
-			keyring.SecretServiceBackend,
-			keyring.WinCredBackend,
 			keyring.FileBackend,
 		},
 		FileDir:          filepath.Join(home, ".config", "eightctl", "keyring"),
