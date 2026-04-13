@@ -24,8 +24,12 @@ chmod 600 ~/.config/eightctl/config.yaml
 # check pod state
 EIGHTCTL_EMAIL=you@example.com EIGHTCTL_PASSWORD=your-password eightctl status
 
-# set temperature level (-100..100)
+# set temperature level (-100..100); without --side, applies to all discovered sides/users
 eightctl temp 20
+
+# target a specific side when the household is split
+eightctl temp -40 --side right
+eightctl on --side left
 
 # run daemon with your YAML schedule (see docs/example-schedule.yaml)
 eightctl daemon --dry-run
@@ -46,6 +50,13 @@ eightctl daemon --dry-run
 - **Misc:** `tracks`, `feats`, `whoami`, `version`
 
 Use `--output table|json|csv` and `--fields field1,field2` to shape output. `--verbose` enables debug logs; `--quiet` hides the config banner.
+
+## Household Targeting
+- `status` shows discovered household targets by default when available, including `left` / `right` or inferred `solo`.
+- `on`, `off`, and `temp` apply to all discovered household targets by default.
+- Use `--side left|right|solo` to target one household side.
+- Use `--target-user-id <id>` when you want to address a specific discovered user directly.
+- For split households, `eightctl status --output json` is the quickest way to inspect available sides and user IDs.
 
 ## Configuration
 Priority: flags > env vars (`EIGHTCTL_*`) > config file.

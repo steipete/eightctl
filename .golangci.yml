@@ -1,26 +1,14 @@
-version: 2
+version: "2"
 
 run:
   timeout: 3m
   tests: true
+
 linters:
-  disable-all: true
-  disable:
-    - errcheck
-    - unused
+  default: none
   enable:
     - govet
-    # revive and errcheck disabled to keep CLI glue concise
-    # - revive
-    # - errcheck
-linters-settings:
-  revive:
-    rules:
-      - name: unused-parameter
-        disabled: true
-      - name: package-comments
-        disabled: true
+
 issues:
-  exclude-use-default: false
   max-issues-per-linter: 0
   max-same-issues: 0

@@ -2,6 +2,7 @@ package client
 
 import (
 	"bytes"
+	"compress/gzip"
 	"context"
 	"crypto/tls"
 	"encoding/json"
@@ -10,6 +11,7 @@ import (
 	"io"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/charmbracelet/log"
@@ -18,10 +20,14 @@ import (
 
 const (
 	defaultBaseURL = "https://client-api.8slp.net/v1"
+	defaultAppURL  = "https://app-api.8slp.net"
 	authURL        = "https://auth-api.8slp.net/v1/tokens"
 	// Extracted from the official Eight Sleep Android app v7.39.17 (public client creds)
-	defaultClientID     = "0894c7f33bb94800a03f1f4df13a4f38"
-	defaultClientSecret = "f0954a3ed5763ba3d06834c73731a32f15f168f47d4f164751275def86db0c76"
+	defaultClientID        = "0894c7f33bb94800a03f1f4df13a4f38"
+	defaultClientSecret    = "f0954a3ed5763ba3d06834c73731a32f15f168f47d4f164751275def86db0c76"
+	maxRateLimitRetries    = 2
+	maxUnauthorizedRetries = 1
+	defaultRetryDelay      = 2 * time.Second
 )
 
 // Client represents Eight Sleep API client.
@@ -35,8 +41,56 @@ type Client struct {
 
 	HTTP     *http.Client
 	BaseURL  string
+	AppURL   string
 	token    string
 	tokenExp time.Time
+}
+
+// breakpointBeforeAuthRequest exists solely to provide a stable debugger stop
+// point immediately before the first outbound auth request is sent.
+func breakpointBeforeAuthRequest(kind string, req *http.Request) {
+	_ = kind
+	_ = req
+}
+
+func responseBodyBytes(resp *http.Response) ([]byte, error) {
+	reader := io.Reader(resp.Body)
+	if strings.Contains(strings.ToLower(resp.Header.Get("Content-Encoding")), "gzip") {
+		gz, err := gzip.NewReader(resp.Body)
+		if err != nil {
+			return nil, err
+		}
+		defer gz.Close()
+		reader = gz
+	}
+	return io.ReadAll(reader)
+}
+
+func decodeJSONResponse(resp *http.Response, out any) error {
+	body, err := responseBodyBytes(resp)
+	if err != nil {
+		return err
+	}
+	return json.Unmarshal(body, out)
+}
+
+func retryAfterDelay(resp *http.Response) time.Duration {
+	if resp == nil {
+		return defaultRetryDelay
+	}
+	value := strings.TrimSpace(resp.Header.Get("Retry-After"))
+	if value == "" {
+		return defaultRetryDelay
+	}
+	if seconds, err := time.ParseDuration(value + "s"); err == nil && seconds > 0 {
+		return seconds
+	}
+	if when, err := http.ParseTime(value); err == nil {
+		if delay := time.Until(when); delay > 0 {
+			return delay
+		}
+	}
+	return defaultRetryDelay
 }
 
 // New creates a Client.
@@ -62,6 +116,7 @@ func New(email, password, userID, clientID, clientSecret string) *Client {
 		ClientSecret: clientSecret,
 		HTTP:         &http.Client{Timeout: 20 * time.Second, Transport: tr},
 		BaseURL:      defaultBaseURL,
+		AppURL:       defaultAppURL,
 	}
 }
 
@@ -100,6 +155,7 @@ func (c *Client) EnsureDeviceID(ctx context.Context) (string, error) {
 	}
 	var res struct {
 		User struct {
+			Devices       []string `json:"devices"`
 			CurrentDevice struct {
 				ID string `json:"id"`
 			} `json:"currentDevice"`
@@ -108,10 +164,14 @@ func (c *Client) EnsureDeviceID(ctx context.Context) (string, error) {
 	if err := c.do(ctx, http.MethodGet, "/users/me", nil, nil, &res); err != nil {
 		return "", err
 	}
-	if res.User.CurrentDevice.ID == "" {
+	if res.User.CurrentDevice.ID != "" {
+		c.DeviceID = res.User.CurrentDevice.ID
+		return c.DeviceID, nil
+	}
+	if len(res.User.Devices) == 0 {
 		return "", errors.New("no current device id")
 	}
-	c.DeviceID = res.User.CurrentDevice.ID
+	c.DeviceID = res.User.Devices[0]
 	return c.DeviceID, nil
 }
 
@@ -120,8 +180,8 @@ func (c *Client) authTokenEndpoint(ctx context.Context) error {
 		"grant_type":    "password",
 		"username":      c.Email,
 		"password":      c.Password,
-		"client_id":     "sleep-client",
-		"client_secret": "",
+		"client_id":     c.ClientID,
+		"client_secret": c.ClientSecret,
 	}
 	body, _ := json.Marshal(payload)
 	req, err := http.NewRequestWithContext(ctx, http.MethodPost, authURL, bytes.NewReader(body))
@@ -130,13 +190,14 @@ func (c *Client) authTokenEndpoint(ctx context.Context) error {
 	}
 	req.Header.Set("Content-Type", "application/json")
 
+	breakpointBeforeAuthRequest("oauth", req)
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(resp.Body)
+		b, _ := responseBodyBytes(resp)
 		log.Debug("token auth failed", "status", resp.Status, "headers", resp.Header, "body", string(b))
 		return fmt.Errorf("token auth failed: %s", resp.Status)
 	}
@@ -146,7 +207,7 @@ func (c *Client) authTokenEndpoint(ctx context.Context) error {
 		ExpiresIn   int    `json:"expires_in"`
 		UserID      string `json:"userId"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := decodeJSONResponse(resp, &res); err != nil {
 		return err
 	}
 	if res.AccessToken == "" {
@@ -183,13 +244,14 @@ func (c *Client) authLegacyLogin(ctx context.Context) error {
 	req.Header.Set("Connection", "keep-alive")
 	req.Header.Set("User-Agent", "okhttp/4.9.3")
 	req.Header.Set("Accept-Encoding", "gzip")
+	breakpointBeforeAuthRequest("legacy", req)
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
 		return err
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(resp.Body)
+		b, _ := responseBodyBytes(resp)
 		log.Debug("legacy login failed", "status", resp.Status, "headers", resp.Header, "body", string(b))
 		return fmt.Errorf("login failed: %s", string(b))
 	}
@@ -200,7 +262,7 @@ func (c *Client) authLegacyLogin(ctx context.Context) error {
 			ExpirationDate string `json:"expirationDate"`
 		} `json:"session"`
 	}
-	if err := json.NewDecoder(resp.Body).Decode(&res); err != nil {
+	if err := decodeJSONResponse(resp, &res); err != nil {
 		return err
 	}
 	if res.Session.Token == "" {
@@ -257,6 +319,18 @@ func (c *Client) requireUser(ctx context.Context) error {
 }
 
 func (c *Client) do(ctx context.Context, method, path string, query url.Values, body any, out any) error {
+	return c.doWithBase(ctx, c.BaseURL, method, path, query, body, out)
+}
+
+func (c *Client) doApp(ctx context.Context, method, path string, query url.Values, body any, out any) error {
+	return c.doWithBase(ctx, c.AppURL, method, path, query, body, out)
+}
+
+func (c *Client) doWithBase(ctx context.Context, baseURL, method, path string, query url.Values, body any, out any) error {
+	return c.doWithRetry(ctx, baseURL, method, path, query, body, out, maxRateLimitRetries, maxUnauthorizedRetries)
+}
+
+func (c *Client) doWithRetry(ctx context.Context, baseURL, method, path string, query url.Values, body any, out any, remaining429 int, remaining401 int) error {
 	if err := c.ensureToken(ctx); err != nil {
 		return err
 	}
@@ -268,7 +342,7 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 		}
 		rdr = bytes.NewReader(b)
 	}
-	u := c.BaseURL + path
+	u := baseURL + path
 	if len(query) > 0 {
 		u += "?" + query.Encode()
 	}
@@ -289,44 +363,70 @@ func (c *Client) do(ctx context.Context, method, path string, query url.Values, 
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode == http.StatusTooManyRequests {
-		time.Sleep(2 * time.Second)
-		return c.do(ctx, method, path, query, body, out)
+		if remaining429 == 0 {
+			b, _ := responseBodyBytes(resp)
+			return fmt.Errorf("api %s %s: rate limited after retries: %s", method, path, string(b))
+		}
+		delay := retryAfterDelay(resp)
+		log.Debug("rate limited; retrying request", "method", method, "path", path, "delay", delay, "remaining_retries", remaining429)
+		time.Sleep(delay)
+		return c.doWithRetry(ctx, baseURL, method, path, query, body, out, remaining429-1, remaining401)
 	}
 	if resp.StatusCode == http.StatusUnauthorized {
+		if remaining401 == 0 {
+			b, _ := responseBodyBytes(resp)
+			return fmt.Errorf("api %s %s: unauthorized after re-auth retry: %s", method, path, string(b))
+		}
 		c.token = ""
 		_ = tokencache.Clear(c.Identity())
 		if err := c.ensureToken(ctx); err != nil {
 			return err
 		}
-		return c.do(ctx, method, path, query, body, out)
+		return c.doWithRetry(ctx, baseURL, method, path, query, body, out, remaining429, remaining401-1)
 	}
 	if resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(resp.Body)
+		b, _ := responseBodyBytes(resp)
 		return fmt.Errorf("api %s %s: %s", method, path, string(b))
 	}
 	if out != nil {
-		return json.NewDecoder(resp.Body).Decode(out)
+		return decodeJSONResponse(resp, out)
 	}
 	return nil
 }
 
 // TurnOn powers device on.
 func (c *Client) TurnOn(ctx context.Context) error {
-	return c.setPower(ctx, true)
+	return c.TurnOnForUser(ctx, "")
 }
 
 // TurnOff powers device off.
 func (c *Client) TurnOff(ctx context.Context) error {
-	return c.setPower(ctx, false)
+	return c.TurnOffForUser(ctx, "")
 }
 
-func (c *Client) setPower(ctx context.Context, on bool) error {
-	if err := c.requireUser(ctx); err != nil {
-		return err
+func (c *Client) TurnOnForUser(ctx context.Context, userID string) error {
+	return c.setPowerForUser(ctx, userID, true)
+}
+
+func (c *Client) TurnOffForUser(ctx context.Context, userID string) error {
+	return c.setPowerForUser(ctx, userID, false)
+}
+
+func (c *Client) setPowerForUser(ctx context.Context, userID string, on bool) error {
+	targetUserID := userID
+	if targetUserID == "" {
+		if err := c.requireUser(ctx); err != nil {
+			return err
+		}
+		targetUserID = c.UserID
 	}
-	path := fmt.Sprintf("/users/%s/devices/power", c.UserID)
-	body := map[string]bool{"on": on}
-	return c.do(ctx, http.MethodPost, path, nil, body, nil)
+	path := fmt.Sprintf("/v1/users/%s/temperature", targetUserID)
+	state := "off"
+	if on {
+		state = "smart"
+	}
+	body := map[string]any{"currentState": map[string]string{"type": state}}
+	return c.doApp(ctx, http.MethodPut, path, nil, body, nil)
 }
 
 func (c *Client) Identity() tokencache.Identity {
@@ -337,17 +437,34 @@ func (c *Client) Identity() tokencache.Identity {
 	}
 }
 
-// SetTemperature sets target heating/cooling level (-100..100).
+// SetTemperature sets target heating/cooling level (-100..100) for the
+// authenticated user's current pod side.
 func (c *Client) SetTemperature(ctx context.Context, level int) error {
-	if err := c.requireUser(ctx); err != nil {
-		return err
-	}
+	return c.SetTemperatureForUser(ctx, "", level)
+}
+
+// SetTemperatureForUser sets target heating/cooling level (-100..100) for a
+// specific household user ID. If userID is empty, the authenticated user's ID
+// is resolved and used.
+func (c *Client) SetTemperatureForUser(ctx context.Context, userID string, level int) error {
 	if level < -100 || level > 100 {
 		return fmt.Errorf("level must be between -100 and 100")
 	}
-	path := fmt.Sprintf("/users/%s/temperature", c.UserID)
+	targetUserID := userID
+	if targetUserID == "" {
+		if err := c.requireUser(ctx); err != nil {
+			return err
+		}
+		targetUserID = c.UserID
+	}
+	path := fmt.Sprintf("/v1/users/%s/temperature", targetUserID)
+	if err := c.doApp(ctx, http.MethodPut, path, nil, map[string]any{
+		"currentState": map[string]string{"type": "smart"},
+	}, nil); err != nil {
+		return err
+	}
 	body := map[string]int{"currentLevel": level}
-	return c.do(ctx, http.MethodPut, path, nil, body, nil)
+	return c.doApp(ctx, http.MethodPut, path, nil, body, nil)
 }
 
 // TempStatus represents current temperature state payload.
@@ -360,12 +477,20 @@ type TempStatus struct {
 
 // GetStatus fetches temperature-based status (current mode/level).
 func (c *Client) GetStatus(ctx context.Context) (*TempStatus, error) {
-	if err := c.requireUser(ctx); err != nil {
-		return nil, err
+	return c.GetStatusForUser(ctx, "")
+}
+
+func (c *Client) GetStatusForUser(ctx context.Context, userID string) (*TempStatus, error) {
+	targetUserID := userID
+	if targetUserID == "" {
+		if err := c.requireUser(ctx); err != nil {
+			return nil, err
+		}
+		targetUserID = c.UserID
 	}
-	path := fmt.Sprintf("/users/%s/temperature", c.UserID)
+	path := fmt.Sprintf("/v1/users/%s/temperature", targetUserID)
 	var res TempStatus
-	if err := c.do(ctx, http.MethodGet, path, nil, nil, &res); err != nil {
+	if err := c.doApp(ctx, http.MethodGet, path, nil, nil, &res); err != nil {
 		return nil, err
 	}
 	return &res, nil
