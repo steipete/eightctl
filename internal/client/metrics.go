@@ -11,13 +11,14 @@ type MetricsActions struct{ c *Client }
 
 func (c *Client) Metrics() *MetricsActions { return &MetricsActions{c: c} }
 
-func (m *MetricsActions) Trends(ctx context.Context, from, to string, out any) error {
+func (m *MetricsActions) Trends(ctx context.Context, from, to, timezone string, out any) error {
 	if err := m.c.requireUser(ctx); err != nil {
 		return err
 	}
 	q := url.Values{}
 	q.Set("from", from)
 	q.Set("to", to)
+	q.Set("tz", timezone)
 	q.Set("include-main", "false")
 	q.Set("include-all-sessions", "true")
 	q.Set("model-version", "v2")

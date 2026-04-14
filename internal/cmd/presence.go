@@ -2,12 +2,12 @@ package cmd
 
 import (
 	"context"
-	"fmt"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 
 	"github.com/steipete/eightctl/internal/client"
+	"github.com/steipete/eightctl/internal/output"
 )
 
 var presenceCmd = &cobra.Command{
@@ -17,12 +17,15 @@ var presenceCmd = &cobra.Command{
 		if err := requireAuthFields(); err != nil {
 			return err
 		}
-		cl := client.New(viper.GetString("email"), viper.GetString("password"), viper.GetString("user_id"), viper.GetString("client_id"), viper.GetString("client_secret"))
-		present, err := cl.GetPresence(context.Background())
+		tz, err := resolveAPITimezone(viper.GetString("timezone"))
 		if err != nil {
 			return err
 		}
-		fmt.Printf("present: %v\n", present)
-		return nil
+		cl := client.New(viper.GetString("email"), viper.GetString("password"), viper.GetString("user_id"), viper.GetString("client_id"), viper.GetString("client_secret"))
+		present, err := cl.GetPresence(context.Background(), tz)
+		if err != nil {
+			return err
+		}
+		return output.Print(output.Format(viper.GetString("output")), []string{"present"}, []map[string]any{{"present": present}})
 	},
 }
