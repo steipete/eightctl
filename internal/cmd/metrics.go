@@ -16,9 +16,18 @@ var metricsTrendsCmd = &cobra.Command{Use: "trends", RunE: func(cmd *cobra.Comma
 	if err := requireAuthFields(); err != nil {
 		return err
 	}
-	from, _ := cmd.Flags().GetString("from")
-	to, _ := cmd.Flags().GetString("to")
-	tz := viper.GetString("timezone")
+	from, err := cmd.Flags().GetString("from")
+	if err != nil {
+		return err
+	}
+	to, err := cmd.Flags().GetString("to")
+	if err != nil {
+		return err
+	}
+	tz, err := resolveAPITimezone(viper.GetString("timezone"))
+	if err != nil {
+		return err
+	}
 	cl := client.New(viper.GetString("email"), viper.GetString("password"), viper.GetString("user_id"), viper.GetString("client_id"), viper.GetString("client_secret"))
 	var out any
 	if err := cl.Metrics().Trends(context.Background(), from, to, tz, &out); err != nil {
@@ -31,7 +40,10 @@ var metricsIntervalsCmd = &cobra.Command{Use: "intervals", RunE: func(cmd *cobra
 	if err := requireAuthFields(); err != nil {
 		return err
 	}
-	id, _ := cmd.Flags().GetString("id")
+	id, err := cmd.Flags().GetString("id")
+	if err != nil {
+		return err
+	}
 	cl := client.New(viper.GetString("email"), viper.GetString("password"), viper.GetString("user_id"), viper.GetString("client_id"), viper.GetString("client_secret"))
 	var out any
 	if err := cl.Metrics().Intervals(context.Background(), id, &out); err != nil {

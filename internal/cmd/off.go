@@ -18,10 +18,28 @@ var offCmd = &cobra.Command{
 			return err
 		}
 		cl := client.New(viper.GetString("email"), viper.GetString("password"), viper.GetString("user_id"), viper.GetString("client_id"), viper.GetString("client_secret"))
-		if err := cl.TurnOff(context.Background()); err != nil {
+		targets, targeted, err := resolveCommandTargets(context.Background(), cmd, cl)
+		if err != nil {
 			return err
 		}
-		fmt.Println("pod turned off")
+		if targeted {
+			for _, target := range targets {
+				if err := cl.TurnOffForUser(context.Background(), target.UserID); err != nil {
+					return err
+				}
+			}
+			fmt.Printf("pod turned off%s\n", targetListSuffix(targets))
+			return nil
+		}
+
+		if err := cl.TurnOffForUser(context.Background(), ""); err != nil {
+			return err
+		}
+		fmt.Printf("pod turned off\n")
 		return nil
 	},
+}
+
+func init() {
+	addTargetingFlags(offCmd, true)
 }

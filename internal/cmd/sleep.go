@@ -2,7 +2,6 @@ package cmd
 
 import (
 	"context"
-	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -24,12 +23,19 @@ var sleepDayCmd = &cobra.Command{
 		if err := requireAuthFields(); err != nil {
 			return err
 		}
-		date, _ := cmd.Flags().GetString("date")
+		date, err := cmd.Flags().GetString("date")
+		if err != nil {
+			return err
+		}
 		if date == "" {
-			date = time.Now().Format("2006-01-02")
+			date = currentDate()
+		}
+		tz, err := resolveAPITimezone(viper.GetString("timezone"))
+		if err != nil {
+			return err
 		}
 		cl := client.New(viper.GetString("email"), viper.GetString("password"), viper.GetString("user_id"), viper.GetString("client_id"), viper.GetString("client_secret"))
-		day, err := cl.GetSleepDay(context.Background(), date, viper.GetString("timezone"))
+		day, err := cl.GetSleepDay(context.Background(), date, tz)
 		if err != nil {
 			return err
 		}
@@ -52,6 +58,6 @@ var sleepDayCmd = &cobra.Command{
 }
 
 func init() {
-	sleepCmd.PersistentFlags().String("date", "", "date YYYY-MM-DD (default today)")
+	sleepDayCmd.Flags().String("date", "", "date YYYY-MM-DD (default today)")
 	sleepCmd.AddCommand(sleepDayCmd)
 }

@@ -63,7 +63,7 @@ Travel:
 - `travel flight-status --flight`
 
 Household:
-- `household summary|schedule|current-set|invitations`
+- `household summary|schedule|current-set|invitations|devices|users|guests`
 
 Audio/temperature data helpers:
 - `tracks`, `feats` remain for backward compatibility.
@@ -71,6 +71,9 @@ Audio/temperature data helpers:
 ## Output & UX
 - Output formats: table (default), json, csv via `--output`; `--fields` to select columns.
 - Logs via charmbracelet/log; `--verbose` for debug; `--quiet` hides config notice.
+- `status` should prefer discovered household targets when available and display `left` / `right` or inferred `solo`.
+- `on`, `off`, and `temp` should default to all discovered household targets unless narrowed with `--side` or `--target-user-id`.
+- `temp` accepts negative positional levels such as `temp -40` without requiring `--`.
 
 ## Daemon Behavior
 - Reads YAML schedule (time, action on|off|temp, temperature with unit), minute tick, executes once per day, PID guard, SIGINT/SIGTERM graceful stop.
@@ -78,7 +81,7 @@ Audio/temperature data helpers:
 
 ## Testing & Quality Gates
 - `go test ./...` (fast compile checks) — run before handoff.
-- Formatting via `gofmt`; prefer `gofumpt`/`staticcheck` later.
+- Formatting via `gofumpt`; prefer `staticcheck`/additional linting later as needed.
 - Live checks: `eightctl status`, `metrics summary`, `tempmode nap status` with test creds to validate auth + userId resolution.
 
 ## Prior Work (references)

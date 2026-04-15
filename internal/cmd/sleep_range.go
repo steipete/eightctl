@@ -19,8 +19,14 @@ var sleepRangeCmd = &cobra.Command{
 		if err := requireAuthFields(); err != nil {
 			return err
 		}
-		from, _ := cmd.Flags().GetString("from")
-		to, _ := cmd.Flags().GetString("to")
+		from, err := cmd.Flags().GetString("from")
+		if err != nil {
+			return err
+		}
+		to, err := cmd.Flags().GetString("to")
+		if err != nil {
+			return err
+		}
 		if from == "" || to == "" {
 			return fmt.Errorf("--from and --to are required")
 		}
@@ -36,8 +42,11 @@ var sleepRangeCmd = &cobra.Command{
 		if end.Before(start) {
 			return fmt.Errorf("to must be >= from")
 		}
+		tz, err := resolveAPITimezone(viper.GetString("timezone"))
+		if err != nil {
+			return err
+		}
 		cl := client.New(viper.GetString("email"), viper.GetString("password"), viper.GetString("user_id"), viper.GetString("client_id"), viper.GetString("client_secret"))
-		tz := viper.GetString("timezone")
 		rows := []map[string]any{}
 		for d := start; !d.After(end); d = d.Add(24 * time.Hour) {
 			day, err := cl.GetSleepDay(context.Background(), d.Format(layout), tz)

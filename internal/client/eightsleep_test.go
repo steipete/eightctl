@@ -3,11 +3,19 @@ package client
 import (
 	"context"
 	"encoding/json"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"time"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) {
+	return f(req)
+}
 
 // mockServer builds a test server that can serve a handful of endpoints the client expects.
 func mockServer(t *testing.T) (*httptest.Server, *Client) {
@@ -16,10 +24,10 @@ func mockServer(t *testing.T) (*httptest.Server, *Client) {
 
 	mux.HandleFunc("/users/me", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
-		w.Write([]byte(`{"user":{"userId":"uid-123","currentDevice":{"id":"dev-1"}}}`))
+		w.Write([]byte(`{"user":{"userId":"uid-123","devices":["dev-1"],"currentDevice":{"id":"dev-1"}}}`))
 	})
 
-	mux.HandleFunc("/users/uid-123/temperature", func(w http.ResponseWriter, r *http.Request) {
+	mux.HandleFunc("/v1/users/uid-123/temperature", func(w http.ResponseWriter, r *http.Request) {
 		if r.Method == http.MethodGet {
 			w.Header().Set("Content-Type", "application/json")
 			w.Write([]byte(`{"currentLevel":5,"currentState":{"type":"on"}}`))
@@ -44,9 +52,9 @@ func mockServer(t *testing.T) (*httptest.Server, *Client) {
 
 	srv := httptest.NewServer(mux)
 
-	// client with pre-set token to skip auth
 	c := New("email", "pass", "", "", "")
 	c.BaseURL = srv.URL
+	c.AppURL = srv.URL
 	c.token = "t"
 	c.tokenExp = time.Now().Add(time.Hour)
 	c.HTTP = srv.Client()
@@ -58,7 +66,6 @@ func TestRequireUserFilledAutomatically(t *testing.T) {
 	srv, c := mockServer(t)
 	defer srv.Close()
 
-	// UserID empty; GetStatus should fetch it from /users/me
 	st, err := c.GetStatus(context.Background())
 	if err != nil {
 		t.Fatalf("status: %v", err)
@@ -73,7 +80,6 @@ func TestRequireUserFilledAutomatically(t *testing.T) {
 
 func TestAuthTokenEndpoint_FormEncoded(t *testing.T) {
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		// Must be form-encoded, not JSON.
 		ct := r.Header.Get("Content-Type")
 		if ct != "application/x-www-form-urlencoded" {
 			t.Errorf("expected form-urlencoded, got %s", ct)
@@ -83,7 +89,6 @@ func TestAuthTokenEndpoint_FormEncoded(t *testing.T) {
 		if err := r.ParseForm(); err != nil {
 			t.Fatalf("ParseForm: %v", err)
 		}
-		// Verify correct client credentials are sent (not "sleep-client").
 		if got := r.PostFormValue("client_id"); got != defaultClientID {
 			t.Errorf("client_id = %q, want %q", got, defaultClientID)
 		}
@@ -97,7 +102,7 @@ func TestAuthTokenEndpoint_FormEncoded(t *testing.T) {
 			t.Errorf("username = %q, want test@example.com", got)
 		}
 		w.Header().Set("Content-Type", "application/json")
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		json.NewEncoder(w).Encode(map[string]any{
 			"access_token": "tok-123",
 			"expires_in":   3600,
 			"userId":       "uid-abc",
@@ -142,13 +147,9 @@ func TestAuthTokenEndpoint_ReturnsErrorOnFailure(t *testing.T) {
 }
 
 func TestNoExplicitGzipHeader(t *testing.T) {
-	// Verify we don't send Accept-Encoding: gzip manually, so Go's
-	// http.Transport handles decompression transparently.
 	mux := http.NewServeMux()
 	mux.HandleFunc("/check", func(w http.ResponseWriter, r *http.Request) {
 		ae := r.Header.Get("Accept-Encoding")
-		// Go's Transport adds its own Accept-Encoding when we don't set one.
-		// The key assertion: our code must NOT set it to exactly "gzip".
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]string{"accept_encoding": ae})
 	})
@@ -165,8 +166,6 @@ func TestNoExplicitGzipHeader(t *testing.T) {
 	if err := c.do(context.Background(), http.MethodGet, "/check", nil, nil, &out); err != nil {
 		t.Fatalf("do: %v", err)
 	}
-	// Go's transport sets "gzip" automatically but handles decompression.
-	// We just verify our code didn't break anything.
 	if out["accept_encoding"] == "" {
 		t.Fatal("expected Accept-Encoding to be set by Go's transport")
 	}
@@ -298,7 +297,6 @@ func TestDeviceSides(t *testing.T) {
 }
 
 func Test429RetryCapped(t *testing.T) {
-	// Verify retries are bounded: after maxRetries, return an error.
 	count := 0
 	mux := http.NewServeMux()
 	mux.HandleFunc("/always429", func(w http.ResponseWriter, r *http.Request) {
@@ -318,8 +316,117 @@ func Test429RetryCapped(t *testing.T) {
 	if err == nil {
 		t.Fatal("expected error after exhausting retries")
 	}
-	// 1 initial + maxRetries = 4 total attempts
 	if count != maxRetries+1 {
 		t.Fatalf("expected %d attempts, got %d", maxRetries+1, count)
+	}
+}
+
+func TestSetTemperatureForUserUsesExplicitUserID(t *testing.T) {
+	var gotPaths []string
+	var gotBodies []string
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/users/other-user/temperature", func(w http.ResponseWriter, r *http.Request) {
+		gotPaths = append(gotPaths, r.URL.Path)
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("read body: %v", err)
+		}
+		gotBodies = append(gotBodies, string(body))
+		w.WriteHeader(http.StatusNoContent)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	c := New("email", "pass", "auth-user", "", "")
+	c.BaseURL = srv.URL
+	c.AppURL = srv.URL
+	c.token = "t"
+	c.tokenExp = time.Now().Add(time.Hour)
+	c.HTTP = srv.Client()
+
+	if err := c.SetTemperatureForUser(context.Background(), "other-user", 12); err != nil {
+		t.Fatalf("SetTemperatureForUser: %v", err)
+	}
+	if len(gotPaths) != 2 {
+		t.Fatalf("expected 2 app requests, got %d", len(gotPaths))
+	}
+	if gotPaths[0] != "/v1/users/other-user/temperature" || gotPaths[1] != "/v1/users/other-user/temperature" {
+		t.Fatalf("paths = %#v, want both /v1/users/other-user/temperature", gotPaths)
+	}
+	if gotBodies[0] != `{"currentState":{"type":"smart"}}` {
+		t.Fatalf("first body = %q, want smart currentState payload", gotBodies[0])
+	}
+	if gotBodies[1] != `{"currentLevel":12}` {
+		t.Fatalf("second body = %q, want {\"currentLevel\":12}", gotBodies[1])
+	}
+}
+
+func TestTurnOnForUserUsesSmartCurrentState(t *testing.T) {
+	var gotBody string
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/v1/users/other-user/temperature", func(w http.ResponseWriter, r *http.Request) {
+		body, err := io.ReadAll(r.Body)
+		if err != nil {
+			t.Fatalf("read body: %v", err)
+		}
+		gotBody = string(body)
+		w.WriteHeader(http.StatusNoContent)
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	c := New("email", "pass", "auth-user", "", "")
+	c.BaseURL = srv.URL
+	c.AppURL = srv.URL
+	c.token = "t"
+	c.tokenExp = time.Now().Add(time.Hour)
+	c.HTTP = srv.Client()
+
+	if err := c.TurnOnForUser(context.Background(), "other-user"); err != nil {
+		t.Fatalf("TurnOnForUser: %v", err)
+	}
+	if gotBody != `{"currentState":{"type":"smart"}}` {
+		t.Fatalf("body = %q, want smart currentState payload", gotBody)
+	}
+}
+
+func TestAuthTokenEndpointUsesClientCredentials(t *testing.T) {
+	c := New("user@example.com", "pass-123", "", "", "")
+	c.HTTP = &http.Client{
+		Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			if req.Method != http.MethodPost {
+				t.Fatalf("method = %s, want POST", req.Method)
+			}
+			if got := req.URL.String(); got != authURL {
+				t.Fatalf("url = %s, want %s", got, authURL)
+			}
+			if err := req.ParseForm(); err != nil {
+				t.Fatalf("parse form: %v", err)
+			}
+			if got := req.PostFormValue("client_id"); got != defaultClientID {
+				t.Fatalf("client_id = %q, want %q", got, defaultClientID)
+			}
+			if got := req.PostFormValue("client_secret"); got != defaultClientSecret {
+				t.Fatalf("client_secret = %q, want %q", got, defaultClientSecret)
+			}
+			resp := &http.Response{
+				StatusCode: http.StatusOK,
+				Body:       io.NopCloser(strings.NewReader(`{"access_token":"tok","expires_in":3600,"userId":"uid-123"}`)),
+				Header:     make(http.Header),
+			}
+			return resp, nil
+		}),
+	}
+
+	if err := c.authTokenEndpoint(context.Background()); err != nil {
+		t.Fatalf("authTokenEndpoint: %v", err)
+	}
+	if c.token != "tok" {
+		t.Fatalf("token = %q, want tok", c.token)
+	}
+	if c.UserID != "uid-123" {
+		t.Fatalf("user id = %q, want uid-123", c.UserID)
 	}
 }
