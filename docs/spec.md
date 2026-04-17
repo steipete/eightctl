@@ -48,7 +48,7 @@ Metrics & insights:
 - `metrics aggregate`
 - `metrics insights`
 - `sleep day --date`, `sleep range --from --to`
-- `presence`
+- `presence [--from --to]`
 
 Autopilot:
 - `autopilot details|history|recap`

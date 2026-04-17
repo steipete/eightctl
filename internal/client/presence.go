@@ -23,16 +23,17 @@ type trendSession struct {
 	Timeseries map[string][][]any `json:"timeseries"`
 }
 
-func (c *Client) GetPresence(ctx context.Context, timezone string) (bool, error) {
+func (c *Client) GetPresence(ctx context.Context, from, to, timezone string) (bool, error) {
 	if err := c.requireUser(ctx); err != nil {
 		return false, err
 	}
 
 	now := time.Now()
+	from, to = resolvePresenceWindow(now, from, to)
 	q := url.Values{}
-	q.Set("tz", timezone)
-	q.Set("from", now.Add(-24*time.Hour).Format("2006-01-02"))
-	q.Set("to", now.Format("2006-01-02"))
+	q.Set("tz", resolveTZ(timezone))
+	q.Set("from", from)
+	q.Set("to", to)
 	q.Set("include-main", "false")
 	q.Set("include-all-sessions", "true")
 	q.Set("model-version", "v2")
@@ -43,6 +44,25 @@ func (c *Client) GetPresence(ctx context.Context, timezone string) (bool, error)
 		return false, err
 	}
 	return presenceFromTrendDays(res.Days, now.UTC()), nil
+}
+
+func resolvePresenceWindow(now time.Time, from, to string) (string, string) {
+	const layout = "2006-01-02"
+
+	if from == "" && to == "" {
+		return now.Add(-24 * time.Hour).Format(layout), now.Format(layout)
+	}
+	if to == "" {
+		return from, now.Format(layout)
+	}
+	if from == "" {
+		end, err := time.Parse(layout, to)
+		if err != nil {
+			return from, to
+		}
+		return end.Add(-24 * time.Hour).Format(layout), to
+	}
+	return from, to
 }
 
 func presenceFromTrendDays(days []trendDay, now time.Time) bool {

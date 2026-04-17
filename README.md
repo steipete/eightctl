@@ -44,7 +44,7 @@ eightctl daemon --dry-run
 - **Audio:** `audio tracks|categories|state|play|pause|seek|volume|pair|next`, `audio favorites list|add|remove`
 - **Base:** `base info|angle|presets|preset-run|vibration-test`
 - **Device:** `device info|peripherals|owner|warranty|online|priming-tasks|priming-schedule`
-- **Metrics & insights:** `sleep day|range`, `presence`, `metrics trends|intervals|insights`
+- **Metrics & insights:** `sleep day|range`, `presence [--from --to]`, `metrics trends|intervals|insights`
 - **Autopilot:** `autopilot details|history|recap`, `autopilot set-level-suggestions`, `autopilot set-snore-mitigation`
 - **Travel:** `travel trips|create-trip|delete-trip|plans|create-plan|update-plan|tasks|airport-search|flight-status`
 - **Household:** `household summary|schedule|current-set|invitations|devices|users|guests`
