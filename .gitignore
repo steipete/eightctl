@@ -31,3 +31,6 @@ go.work.sum
 # .idea/
 # .vscode/
 eightctl
+
+# Clawpatch local review state
+.clawpatch/
