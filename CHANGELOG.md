@@ -30,10 +30,10 @@ release history from git.
   and the current command surface.
 - Release automation now uses `.goreleaser.yaml`, supports tag backfills, and
   includes a Linux arm64 target.
+- Release packaging configuration now uses the current GoReleaser archive fields.
 - Lint configuration was prepared for golangci-lint v2.
-- Go module now targets Go 1.26.2 and tracks `gofumpt` with the Go tool
-  directive.
-- Dependencies and CI tooling were updated to current versions.
+- Go module now targets Go 1.26.4 and tracks `gofumpt` with the Go tool directive.
+- Dependencies and CI tooling were updated to current stable versions, including pnpm 11.
 
 ### Fixed
 

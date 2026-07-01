@@ -1,6 +1,6 @@
 module github.com/steipete/eightctl
 
-go 1.26.2
+go 1.26.4
 
 require (
 	github.com/99designs/keyring v1.2.2

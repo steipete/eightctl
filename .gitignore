@@ -21,6 +21,9 @@ profile.cov
 # vendor/
 node_modules/
 
+# GoReleaser output
+dist/
+
 # Go workspace file
 go.work
 go.work.sum
