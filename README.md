@@ -68,7 +68,8 @@ Key fields: `email`, `password`, optional `user_id`, `client_id`, `client_secret
 - Go: module targets Go 1.26.4 and lets `actions/setup-go` read `go.mod`.
 - Make: `make fmt` (tracked `go tool` gofumpt), `make lint` (golangci-lint), `make test`, `make coverage`.
 - Coverage: CI enforces >=85% on core packages (`internal/client`, `config`, `daemon`, `output`, `tokencache`); command wiring still runs through `go test ./...`.
-- CI: `.github/workflows/ci.yml` runs format, lint, tests, and the coverage gate.
+- CI: `.github/workflows/ci.yml` runs format, lint, tests, the coverage gate, and a release-artifact version smoke test.
+- Releases: `v*` tags publish GoReleaser archives whose embedded version and GitHub Release notes come from the tag and matching changelog section.
 - pnpm scripts (optional): `pnpm eightctl|start|build|lint|format|test|coverage` (see package.json).
 
 ## Known API realities

@@ -29,18 +29,33 @@ jobs:
           go-version-file: go.mod
           cache: true
 
-      - name: Stash GoReleaser config
-        run: cp .goreleaser.yaml /tmp/.goreleaser.yaml
+      - name: Prepare release inputs
+        env:
+          RELEASE_TAG: ${{ github.event_name == 'workflow_dispatch' && inputs.tag || github.ref_name }}
+        run: |
+          if ! [[ "$RELEASE_TAG" =~ ^v[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+            echo "invalid release tag: $RELEASE_TAG" >&2
+            exit 1
+          fi
+          git rev-parse --verify "refs/tags/${RELEASE_TAG}^{commit}" >/dev/null
+          echo "RELEASE_TAG=$RELEASE_TAG" >> "$GITHUB_ENV"
+          cp .goreleaser.yaml /tmp/.goreleaser.yaml
+          ./scripts/release-notes "$RELEASE_TAG" > /tmp/release-notes.md
+          test -s /tmp/release-notes.md
+          if grep -q '^## .* - Unreleased$' /tmp/release-notes.md; then
+            echo "finalize the $RELEASE_TAG changelog heading before release" >&2
+            exit 1
+          fi
 
       - name: Checkout release tag
         if: ${{ github.event_name == 'workflow_dispatch' }}
-        run: git checkout ${{ inputs.tag }}
+        run: git checkout --detach "refs/tags/${RELEASE_TAG}"
 
       - name: GoReleaser
         uses: goreleaser/goreleaser-action@v7.2.3
         with:
           distribution: goreleaser
-          version: latest
-          args: release --clean --config /tmp/.goreleaser.yaml
+          version: v2.16.0
+          args: release --clean --config /tmp/.goreleaser.yaml --release-notes /tmp/release-notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

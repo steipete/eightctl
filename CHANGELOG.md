@@ -37,6 +37,7 @@ release history from git.
 
 ### Fixed
 
+- Release archives now report the tagged version from `eightctl version`, include the matching changelog section in GitHub Release notes, and use a pinned GoReleaser version.
 - Reused cached OAuth tokens across household user IDs.
 - Resolved away-mode targeting correctly for left/right/solo household sides.
 - Added keychain fallback behavior for cached token lookup.

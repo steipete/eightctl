@@ -45,3 +45,29 @@ jobs:
           COVERAGE=$(go tool cover -func=coverage.out | awk '/^total:/ {gsub("%", "", $3); print $3}')
           echo "core coverage: ${COVERAGE}%"
           awk -v coverage="$COVERAGE" 'BEGIN { exit !(coverage >= 85.0) }'
+
+      - name: Release notes smoke test
+        run: |
+          ./scripts/release-notes v0.2.0 > /tmp/eightctl-release-notes.md
+          grep -q '^## 0\.2\.0 ' /tmp/eightctl-release-notes.md
+          if grep -q '^## 0\.1\.0 ' /tmp/eightctl-release-notes.md; then
+            exit 1
+          fi
+          if ./scripts/release-notes v9.9.9 >/dev/null 2>&1; then
+            exit 1
+          fi
+
+      - name: Install GoReleaser
+        uses: goreleaser/goreleaser-action@v7.2.3
+        with:
+          distribution: goreleaser
+          version: v2.16.0
+          install-only: true
+
+      - name: Release artifact smoke test
+        run: |
+          goreleaser build --snapshot --clean --single-target
+          BINARY=$(jq -r '.[] | select(.type == "Binary") | .path' dist/artifacts.json)
+          EXPECTED=$(jq -r '.version' dist/metadata.json)
+          ACTUAL=$("$BINARY" version)
+          test "$ACTUAL" = "$EXPECTED"

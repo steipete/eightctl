@@ -1,0 +1,24 @@
+#!/bin/sh
+set -eu
+
+if [ "$#" -ne 1 ]; then
+	echo "usage: $0 <tag>" >&2
+	exit 2
+fi
+
+version=${1#v}
+changelog=${CHANGELOG_FILE:-CHANGELOG.md}
+
+awk -v version="$version" '
+	function is_target(line) {
+		return line == "## " version || index(line, "## " version " ") == 1
+	}
+	is_target($0) { found = 1 }
+	found && /^## / && !is_target($0) { exit }
+	found { print }
+	END {
+		if (!found) {
+			exit 3
+		}
+	}
+' "$changelog"
