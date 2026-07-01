@@ -17,10 +17,13 @@ Eight Sleep Pod power/control + data-export CLI, written in Go. Targets macOS/Li
 - Permissions check warns if config is more permissive than `0600`.
 
 ## CLI Surface (implemented)
-Core: `on`, `off`, `temp <level>`, `status`, `whoami`, `version`.
+Core: `on`, `off`, `temp <level>`, `status`, `whoami`, `logout`, `version`.
+
+Away mode:
+- `away on|off`
 
 Schedules & daemon:
-- `schedule list|create|update|delete` (cloud temperature schedules)
+- `schedule list` (Autopilot smart schedule)
 - `daemon` (YAML-based scheduler with PID guard, dry-run, timezone override, optional state sync)
 
 Alarms:
@@ -34,9 +37,10 @@ Temperature modes & events:
 
 Audio:
 - `audio tracks|categories|state|play|pause|seek|volume|pair|next`
+- `audio favorites list|add|remove`
 
 Adjustable base:
-- `base info|angle|presets|preset-run|vibration-test`
+- `base info|angle|presets|preset-run|test`
 
 Device & maintenance:
 - `device info|peripherals|owner|warranty|online|priming-tasks|priming-schedule`
@@ -44,20 +48,18 @@ Device & maintenance:
 Metrics & insights:
 - `metrics trends --from --to`
 - `metrics intervals --id`
-- `metrics summary`
-- `metrics aggregate`
 - `metrics insights`
 - `sleep day --date`, `sleep range --from --to`
 - `presence [--from --to]`
 
 Autopilot:
 - `autopilot details|history|recap`
-- `autopilot set-level-suggestions --enabled`
-- `autopilot set-snore-mitigation --enabled`
+- `autopilot level-suggestions --enabled`
+- `autopilot snore-mitigation --enabled`
 
 Travel:
 - `travel trips|create-trip|delete-trip`
-- `travel plans --trip`
+- `travel plans|create-plan|update-plan`
 - `travel tasks --plan`
 - `travel airport-search --query`
 - `travel flight-status --flight`
@@ -73,6 +75,7 @@ Audio/temperature data helpers:
 - Logs via charmbracelet/log; `--verbose` for debug; `--quiet` hides config notice.
 - `status` should prefer discovered household targets when available and display `left` / `right` or inferred `solo`.
 - `on`, `off`, and `temp` should default to all discovered household targets unless narrowed with `--side` or `--target-user-id`.
+- `away` should default to the authenticated user's side, accept `--side` or `--target-user-id`, and use `--both` for the household.
 - `temp` accepts negative positional levels such as `temp -40` without requiring `--`.
 
 ## Daemon Behavior
