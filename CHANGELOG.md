@@ -32,8 +32,8 @@ release history from git.
   includes a Linux arm64 target.
 - Release packaging configuration now uses the current GoReleaser archive fields.
 - Lint configuration was prepared for golangci-lint v2.
-- Go module now targets Go 1.26.4 and tracks `gofumpt` with the Go tool directive.
-- Dependencies and CI tooling were updated to current stable versions, including pnpm 11.
+- Go module now targets Go 1.26.5 and tracks `gofumpt` with the Go tool directive.
+- Dependencies and CI tooling were updated to current stable versions, including Go 1.26.5, pnpm 11.12, and GoReleaser 2.17.
 
 ### Fixed
 

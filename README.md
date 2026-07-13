@@ -65,7 +65,7 @@ Priority: flags > env vars (`EIGHTCTL_*`) > config file.
 Key fields: `email`, `password`, optional `user_id`, `client_id`, `client_secret`, `timezone`, `output`, `fields`, `verbose`. The client auto-resolves `user_id` and `device_id` after authentication. Config file permissions are checked (warn if >0600).
 
 ## Tooling
-- Go: module targets Go 1.26.4 and lets `actions/setup-go` read `go.mod`.
+- Go: module targets Go 1.26.5 and lets `actions/setup-go` read `go.mod`.
 - Make: `make fmt` (tracked `go tool` gofumpt), `make lint` (golangci-lint), `make test`, `make coverage`.
 - Coverage: CI enforces >=85% on core packages (`internal/client`, `config`, `daemon`, `output`, `tokencache`); command wiring still runs through `go test ./...`.
 - CI: `.github/workflows/ci.yml` runs format, lint, tests, the coverage gate, and a release-artifact version smoke test.

@@ -61,7 +61,7 @@ jobs:
         uses: goreleaser/goreleaser-action@v7.2.3
         with:
           distribution: goreleaser
-          version: v2.16.0
+          version: v2.17.0
           install-only: true
 
       - name: Release artifact smoke test
