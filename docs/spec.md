@@ -45,10 +45,9 @@ Adjustable base:
 Device & maintenance:
 - `device info|peripherals|owner|warranty|online|priming-tasks|priming-schedule`
 
-Metrics & insights:
+Metrics:
 - `metrics trends --from --to`
 - `metrics intervals --id`
-- `metrics insights`
 - `sleep day --date`, `sleep range --from --to`
 - `presence [--from --to]`
 

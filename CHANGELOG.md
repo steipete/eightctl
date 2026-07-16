@@ -46,6 +46,7 @@ release history from git.
 
 ### Removed
 
+- Removed unavailable `metrics insights` behavior after Eight Sleep endpoint changes; use `metrics trends` instead. Thanks @Abhijay.
 - Removed unavailable `metrics summary` and `metrics aggregate` behavior after
   Eight Sleep endpoint changes; use `metrics trends` instead.
 

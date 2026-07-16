@@ -33,14 +33,6 @@ func TestClientDataActionEndpoints(t *testing.T) {
 			want: recordedRequest{Method: http.MethodGet, Path: "/users/uid/intervals/session-1"},
 		},
 		{
-			name: "MetricsInsights",
-			call: func(ctx context.Context, c *Client) error {
-				var out any
-				return c.Metrics().Insights(ctx, &out)
-			},
-			want: recordedRequest{Method: http.MethodGet, Path: "/users/uid/insights"},
-		},
-		{
 			name: "GetSmartSchedule",
 			call: func(ctx context.Context, c *Client) error {
 				_, err := c.GetSmartSchedule(ctx)

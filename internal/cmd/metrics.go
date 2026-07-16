@@ -10,7 +10,14 @@ import (
 	"github.com/steipete/eightctl/internal/output"
 )
 
-var metricsCmd = &cobra.Command{Use: "metrics", Short: "Sleep metrics and insights"}
+var metricsCmd = &cobra.Command{
+	Use:   "metrics",
+	Short: "Sleep metrics",
+	Args:  cobra.NoArgs,
+	RunE: func(cmd *cobra.Command, args []string) error {
+		return cmd.Help()
+	},
+}
 
 var metricsTrendsCmd = &cobra.Command{Use: "trends", RunE: func(cmd *cobra.Command, args []string) error {
 	if err := requireAuthFields(); err != nil {
@@ -52,22 +59,10 @@ var metricsIntervalsCmd = &cobra.Command{Use: "intervals", RunE: func(cmd *cobra
 	return output.Print(output.Format(viper.GetString("output")), []string{"interval"}, []map[string]any{{"interval": out}})
 }}
 
-var metricsInsightsCmd = &cobra.Command{Use: "insights", RunE: func(cmd *cobra.Command, args []string) error {
-	if err := requireAuthFields(); err != nil {
-		return err
-	}
-	cl := client.New(viper.GetString("email"), viper.GetString("password"), viper.GetString("user_id"), viper.GetString("client_id"), viper.GetString("client_secret"))
-	var out any
-	if err := cl.Metrics().Insights(context.Background(), &out); err != nil {
-		return err
-	}
-	return output.Print(output.Format(viper.GetString("output")), []string{"insights"}, []map[string]any{{"insights": out}})
-}}
-
 func init() {
 	metricsTrendsCmd.Flags().String("from", "", "from date YYYY-MM-DD")
 	metricsTrendsCmd.Flags().String("to", "", "to date YYYY-MM-DD")
 	metricsIntervalsCmd.Flags().String("id", "", "session id")
 
-	metricsCmd.AddCommand(metricsTrendsCmd, metricsIntervalsCmd, metricsInsightsCmd)
+	metricsCmd.AddCommand(metricsTrendsCmd, metricsIntervalsCmd)
 }
