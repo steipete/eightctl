@@ -12,7 +12,7 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 
 ### Release engineering
 
-- Migrated release automation to the immutable `openclaw/release-workflows@v1.0.0-alpha.1` Go CLI pipeline, which freezes a protected green `main`, creates an annotated tag, builds the cross-platform matrix, signs and notarizes macOS binaries, verifies the credential-free draft, publishes it, and opens the next development cycle.
+- Migrated release automation to the immutable `openclaw/release-workflows@v1.0.0-alpha.2` Go CLI pipeline, which freezes a protected green `main`, creates an annotated tag, builds the cross-platform matrix, signs and notarizes macOS binaries, verifies the credential-free draft, publishes it, and opens the next development cycle.
 - Retained the former GoReleaser workflow as a documented manual-only legacy fallback, removing its tag trigger so a unified release cannot double-fire.
 - Validated the release stack with Go 1.26.5, `actions/setup-go` 7.0.0, GoReleaser 2.17.0 and action 7.2.3, golangci-lint 2.12.2 and action 9.3.0, and pnpm 11.14.0.
 - Refreshed `github.com/mattn/go-isatty` to 0.0.23 after a full direct and transitive Go dependency sweep.
