@@ -11,12 +11,19 @@ jobs:
         continue-on-error: true
         with:
           script: |
-            try {
-              const r = await github.rest.repos.createRelease({ ...context.repo, tag_name: 'perm-probe-tag', name: 'perm probe', draft: true, generate_release_notes: false });
-              core.info(`github-script: CREATED id=${r.data.id}`);
-              await github.rest.repos.deleteRelease({ ...context.repo, release_id: r.data.id });
-              core.info('github-script: deleted');
-            } catch (e) { core.warning(`github-script FAILED: ${e.status} ${e.message}`); }
+            const cases = [
+              { label: 'existing-tag+sha', tag_name: 'v0.2.1', target_commitish: '8d5b9d73c29c3e07d32171fd8208abc9e92dfb11', draft: true },
+              { label: 'existing-tag-no-commitish', tag_name: 'v0.2.1', draft: true },
+              { label: 'new-tag+sha', tag_name: 'perm-probe-tag3', target_commitish: '8d5b9d73c29c3e07d32171fd8208abc9e92dfb11', draft: true },
+            ];
+            for (const c of cases) {
+              const { label, ...params } = c;
+              try {
+                const r = await github.rest.repos.createRelease({ ...context.repo, name: `probe ${label}`, ...params });
+                core.info(`CASE ${label}: CREATED id=${r.data.id}`);
+                await github.rest.repos.deleteRelease({ ...context.repo, release_id: r.data.id });
+              } catch (e) { core.warning(`CASE ${label}: FAILED ${e.status} ${e.message}`); }
+            }
       - name: probe via gh cli
         continue-on-error: true
         env:
