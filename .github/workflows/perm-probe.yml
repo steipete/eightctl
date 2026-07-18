@@ -1,0 +1,25 @@
+name: perm-probe
+on: workflow_dispatch
+permissions:
+  contents: write
+jobs:
+  probe:
+    runs-on: ubuntu-latest
+    steps:
+      - name: probe createRelease via github-script
+        uses: actions/github-script@ed597411d8f924073f98dfc5c65a23a2325f34cd
+        continue-on-error: true
+        with:
+          script: |
+            try {
+              const r = await github.rest.repos.createRelease({ ...context.repo, tag_name: 'perm-probe-tag', name: 'perm probe', draft: true, generate_release_notes: false });
+              core.info(`github-script: CREATED id=${r.data.id}`);
+              await github.rest.repos.deleteRelease({ ...context.repo, release_id: r.data.id });
+              core.info('github-script: deleted');
+            } catch (e) { core.warning(`github-script FAILED: ${e.status} ${e.message}`); }
+      - name: probe via gh cli
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh release create perm-probe-tag2 --draft --title "perm probe 2" --notes probe --repo "$GITHUB_REPOSITORY" && echo "GH CLI: CREATED" && gh release delete perm-probe-tag2 --yes --repo "$GITHUB_REPOSITORY" || echo "GH CLI: FAILED"
