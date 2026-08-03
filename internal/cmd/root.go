@@ -82,7 +82,7 @@ func init() {
 }
 
 func initConfig() {
-	cfg, err := config.Load(viper.GetString("config"), viper.GetBool("config-quiet"))
+	cfg, err := config.Load(viper.GetViper(), viper.GetString("config"), viper.GetBool("config-quiet"))
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}

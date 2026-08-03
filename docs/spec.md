@@ -80,6 +80,7 @@ Audio/temperature data helpers:
 ## Daemon Behavior
 - Reads YAML schedule (time, action on|off|temp, temperature with unit), minute tick, executes once per day, PID guard, SIGINT/SIGTERM graceful stop.
 - Optional state sync compares expected schedule state vs device and reconciles.
+- Start with `eightctl daemon --config ~/.config/eightctl/config.yaml --dry-run` to validate scheduled actions without changing the pod.
 
 ## Testing & Quality Gates
 - `go test ./...` (fast compile checks) — run before handoff.

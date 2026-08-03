@@ -22,10 +22,8 @@ type Config struct {
 	Verbose      bool     `mapstructure:"verbose"`
 }
 
-// Load initializes viper and unmarshals Config.
-func Load(configPath string, quiet bool) (Config, error) {
-	v := viper.New()
-
+// Load configures v, reads the selected file, and unmarshals Config.
+func Load(v *viper.Viper, configPath string, quiet bool) (Config, error) {
 	v.SetConfigType("yaml")
 	v.SetEnvPrefix("EIGHTCTL")
 	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))

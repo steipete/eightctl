@@ -62,9 +62,19 @@ email: "you@example.com"
 password: "your-password"
 timezone: "America/New_York"
 output: "table"
+schedule:
+  - time: "22:30"
+    action: "temp"
+    temperature: "-20"
 ```
 
 Keep the file readable only by your account with `chmod 600 ~/.config/eightctl/config.yaml`. The optional `user_id` is resolved after authentication, and the public app OAuth client is used unless `client_id` and `client_secret` are set.
+
+Preview scheduled actions without changing the pod, then remove `--dry-run` when the schedule is ready:
+
+```sh
+eightctl daemon --config ~/.config/eightctl/config.yaml --dry-run
+```
 
 ## Structured output
 

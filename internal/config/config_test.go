@@ -5,6 +5,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/spf13/viper"
 )
 
 func TestLoadReadsConfigAndEnv(t *testing.T) {
@@ -24,7 +26,7 @@ func TestLoadReadsConfigAndEnv(t *testing.T) {
 	}
 	t.Setenv("EIGHTCTL_PASSWORD", "env-pass")
 
-	got, err := Load(cfgPath, true)
+	got, err := Load(viper.New(), cfgPath, true)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
@@ -44,7 +46,7 @@ func TestLoadReadsConfigAndEnv(t *testing.T) {
 
 func TestLoadDefaultsWhenConfigMissing(t *testing.T) {
 	t.Setenv("HOME", t.TempDir())
-	got, err := Load("", true)
+	got, err := Load(viper.New(), "", true)
 	if err != nil {
 		t.Fatalf("Load: %v", err)
 	}
