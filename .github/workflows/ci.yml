@@ -48,9 +48,9 @@ jobs:
 
       - name: Release notes smoke test
         run: |
-          ./scripts/release-notes v0.2.1 > /tmp/eightctl-release-notes.md
-          grep -q '^## 0\.2\.1 ' /tmp/eightctl-release-notes.md
-          if grep -q '^## 0\.2\.0 ' /tmp/eightctl-release-notes.md; then
+          ./scripts/release-notes v0.2.2 > /tmp/eightctl-release-notes.md
+          grep -q '^## 0\.2\.2 ' /tmp/eightctl-release-notes.md
+          if grep -q '^## 0\.2\.1 ' /tmp/eightctl-release-notes.md; then
             exit 1
           fi
           if ./scripts/release-notes v9.9.9 >/dev/null 2>&1; then
