@@ -6,6 +6,10 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 
 ## Unreleased
 
+### Documentation
+
+- Reworked the README around installation, first controls, configuration, structured output, and linked reference material.
+
 ## 0.2.1 - 2026-07-17
 
 ### Highlights
