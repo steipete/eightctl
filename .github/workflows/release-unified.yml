@@ -11,7 +11,31 @@ on:
 permissions: {}
 
 jobs:
+  preflight:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    outputs:
+      already-published: ${{ steps.release-state.outputs.already-published }}
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Check release metadata
+        run: ./scripts/check-release-metadata
+
+      - name: Verify existing published release
+        id: release-state
+        env:
+          GH_TOKEN: ${{ github.token }}
+          RELEASE_VERSION: ${{ inputs.version }}
+        run: ./scripts/release-preflight "$RELEASE_VERSION"
+
   release:
+    needs: preflight
+    if: needs.preflight.outputs.already-published != 'true'
     permissions:
       actions: read
       checks: read

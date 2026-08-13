@@ -1,0 +1,17 @@
+#!/bin/sh
+set -eu
+
+package_version=$(awk -F '"' '$2 == "version" { print $4; exit }' package.json)
+changelog_version=$(awk '/^## [0-9]+\.[0-9]+\.[0-9]+( |$)/ { print $2; exit }' CHANGELOG.md)
+
+if [ -z "$package_version" ] || [ -z "$changelog_version" ]; then
+	echo "could not resolve release metadata from package.json and CHANGELOG.md" >&2
+	exit 1
+fi
+
+if [ "$package_version" != "$changelog_version" ]; then
+	echo "package.json version $package_version does not match latest finalized changelog version $changelog_version" >&2
+	exit 1
+fi
+
+echo "release metadata matches v$package_version"

@@ -6,6 +6,10 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 
 ## Unreleased
 
+### Release engineering
+
+- Made release retries verify and reuse an already-published release, added release metadata consistency checks, and moved Go dependency-graph submission into a repository-owned workflow.
+
 ## 0.2.2 - 2026-08-02
 
 ### Fixed

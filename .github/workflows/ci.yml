@@ -36,6 +36,9 @@ jobs:
       - name: Test
         run: go test ./...
 
+      - name: Release metadata consistency
+        run: ./scripts/check-release-metadata
+
       - name: Coverage
         run: |
           go test \

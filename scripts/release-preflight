@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+if [[ $# -lt 1 || $# -gt 2 ]]; then
+	echo "usage: $0 <version> [owner/repository]" >&2
+	exit 2
+fi
+
+version=${1#v}
+repository=${2:-${GITHUB_REPOSITORY:-}}
+if [[ ! "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+([.-][0-9A-Za-z.-]+)?$ ]]; then
+	echo "invalid release version: $1" >&2
+	exit 1
+fi
+if [[ -z "$repository" ]]; then
+	remote=$(git remote get-url origin)
+	repository=${remote#https://github.com/}
+	repository=${repository#git@github.com:}
+	repository=${repository%.git}
+fi
+if [[ ! "$repository" =~ ^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$ ]]; then
+	echo "invalid GitHub repository: $repository" >&2
+	exit 1
+fi
+
+tag="v$version"
+work=$(mktemp -d "${TMPDIR:-/tmp}/eightctl-release-preflight.XXXXXX")
+trap 'rm -rf "$work"' EXIT
+
+set +e
+release_response=$(gh api "repos/$repository/releases/tags/$tag" 2>&1)
+api_rc=$?
+set -e
+if [[ $api_rc -ne 0 ]]; then
+	if [[ "$release_response" == *"HTTP 404"* ]]; then
+		echo "already-published=false"
+		if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+			echo "already-published=false" >> "$GITHUB_OUTPUT"
+		fi
+		exit 0
+	fi
+	echo "$release_response" >&2
+	exit "$api_rc"
+fi
+printf '%s\n' "$release_response" > "$work/release.json"
+
+if [[ $(git cat-file -t "refs/tags/$tag" 2>/dev/null || true) != tag ]]; then
+	echo "published release tag is not an annotated tag: $tag" >&2
+	exit 1
+fi
+tag_commit=$(git rev-parse "refs/tags/$tag^{commit}")
+git show "refs/tags/$tag:package.json" > "$work/package.json"
+
+./scripts/release-notes "$tag" > "$work/expected-release-notes.md"
+gh release download "$tag" \
+	--repo "$repository" \
+	--pattern ASSET-INVENTORY.json \
+	--pattern RELEASE-NOTES.md \
+	--pattern SHA256SUMS \
+	--dir "$work/assets"
+
+RELEASE_JSON="$work/release.json" \
+PACKAGE_JSON="$work/package.json" \
+EXPECTED_NOTES="$work/expected-release-notes.md" \
+ASSET_DIR="$work/assets" \
+EXPECTED_REPOSITORY="$repository" \
+EXPECTED_TAG="$tag" \
+EXPECTED_VERSION="$version" \
+EXPECTED_COMMIT="$tag_commit" \
+node <<'NODE'
+const crypto = require('crypto');
+const fs = require('fs');
+const path = require('path');
+
+const read = (name) => fs.readFileSync(path.join(process.env.ASSET_DIR, name));
+const digest = (bytes) => crypto.createHash('sha256').update(bytes).digest('hex');
+const release = JSON.parse(fs.readFileSync(process.env.RELEASE_JSON, 'utf8'));
+const packageJson = JSON.parse(fs.readFileSync(process.env.PACKAGE_JSON, 'utf8'));
+const notes = read('RELEASE-NOTES.md');
+const expectedNotes = fs.readFileSync(process.env.EXPECTED_NOTES);
+const inventoryBytes = read('ASSET-INVENTORY.json');
+const checksumBytes = read('SHA256SUMS');
+
+if (release.draft || release.prerelease || !release.published_at ||
+    release.tag_name !== process.env.EXPECTED_TAG) {
+  throw new Error('release is not the expected published stable release');
+}
+if (packageJson.version !== process.env.EXPECTED_VERSION) {
+  throw new Error('tagged package.json version does not match the release');
+}
+if (!notes.equals(expectedNotes) || release.body !== notes.toString('utf8')) {
+  throw new Error('published release notes differ from the tagged changelog section');
+}
+
+const assets = new Map();
+for (const asset of release.assets ?? []) {
+  if (assets.has(asset.name) || !/^[A-Za-z0-9][A-Za-z0-9+@._-]*$/.test(asset.name) ||
+      !/^sha256:[0-9a-f]{64}$/.test(asset.digest ?? '')) {
+    throw new Error(`invalid or duplicate release asset: ${JSON.stringify(asset.name)}`);
+  }
+  assets.set(asset.name, asset);
+}
+
+const checksums = new Map();
+for (const line of checksumBytes.toString('utf8').split('\n')) {
+  if (!line) continue;
+  const match = /^([0-9a-f]{64})  ([A-Za-z0-9][A-Za-z0-9+@._-]*)$/.exec(line);
+  if (!match || checksums.has(match[2])) throw new Error(`invalid checksum line: ${JSON.stringify(line)}`);
+  checksums.set(match[2], match[1]);
+}
+if (checksums.size === 0 || assets.size !== checksums.size + 1 || !assets.has('SHA256SUMS')) {
+  throw new Error('published asset names do not match the checksum manifest');
+}
+for (const [name, hash] of checksums) {
+  if (assets.get(name)?.digest !== `sha256:${hash}`) {
+    throw new Error(`GitHub asset digest differs from SHA256SUMS for ${name}`);
+  }
+}
+if (assets.get('SHA256SUMS').digest !== `sha256:${digest(checksumBytes)}` ||
+    assets.get('ASSET-INVENTORY.json').digest !== `sha256:${digest(inventoryBytes)}` ||
+    assets.get('RELEASE-NOTES.md').digest !== `sha256:${digest(notes)}`) {
+  throw new Error('downloaded release controls differ from GitHub asset digests');
+}
+
+const inventory = JSON.parse(inventoryBytes);
+if (inventory.schemaVersion !== 1 || inventory.repository !== process.env.EXPECTED_REPOSITORY ||
+    inventory.tag !== process.env.EXPECTED_TAG || inventory.commit !== process.env.EXPECTED_COMMIT ||
+    !Array.isArray(inventory.payloads)) {
+  throw new Error('asset inventory identity is invalid');
+}
+const payloads = new Map();
+for (const payload of inventory.payloads) {
+  if (payloads.has(payload.name) || !Number.isSafeInteger(payload.size) || payload.size < 0 ||
+      !/^[0-9a-f]{64}$/.test(payload.sha256 ?? '')) {
+    throw new Error(`invalid inventory payload: ${JSON.stringify(payload.name)}`);
+  }
+  payloads.set(payload.name, payload);
+}
+if (payloads.size + 1 !== checksums.size || !checksums.has('ASSET-INVENTORY.json')) {
+  throw new Error('asset inventory does not cover the checksum manifest');
+}
+for (const [name, payload] of payloads) {
+  const asset = assets.get(name);
+  if (checksums.get(name) !== payload.sha256 || asset?.size !== payload.size) {
+    throw new Error(`asset inventory differs from published metadata for ${name}`);
+  }
+}
+NODE
+
+echo "verified existing published release $tag at $tag_commit"
+echo "already-published=true"
+if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
+	echo "already-published=true" >> "$GITHUB_OUTPUT"
+fi
