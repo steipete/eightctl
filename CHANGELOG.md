@@ -4,7 +4,7 @@ All notable changes to this project are documented here.
 
 The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier project history from git.
 
-## v0.2.3 - 2026-08-14
+## 0.2.3 - 2026-08-14
 
 ### Release engineering
 
