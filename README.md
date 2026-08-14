@@ -21,7 +21,7 @@ brew install steipete/tap/eightctl
 
 Prebuilt archives for macOS, Linux, and Windows on amd64 and arm64 are available from the [latest GitHub release](https://github.com/steipete/eightctl/releases/latest).
 
-To build and install from source, use Go 1.26.5 or newer:
+To build and install from source, use Go 1.26.6 or newer:
 
 ```sh
 go install github.com/steipete/eightctl/cmd/eightctl@latest
