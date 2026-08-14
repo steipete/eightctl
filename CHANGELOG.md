@@ -4,13 +4,12 @@ All notable changes to this project are documented here.
 
 The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier project history from git.
 
-## Unreleased
+## v0.2.3 - 2026-08-14
 
 ### Release engineering
 
 - Raised the minimum Go version to 1.26.6 for the latest standard-library security fixes.
 - Made release retries verify and reuse an already-published release, added release metadata consistency checks, and moved Go dependency-graph submission into a repository-owned workflow.
-
 ## 0.2.2 - 2026-08-02
 
 ### Fixed
