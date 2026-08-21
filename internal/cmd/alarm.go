@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"strings"
+	"time"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -82,6 +83,67 @@ var alarmCreateCmd = &cobra.Command{
 	},
 }
 
+var alarmCreateOneOffCmd = &cobra.Command{
+	Use:   "create-one-off",
+	Short: "Create a single-use alarm",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireAuthFields(); err != nil {
+			return err
+		}
+		timeStr, err := normalizeAlarmTime(viper.GetString("one-off-time"))
+		if err != nil {
+			return err
+		}
+		vibrationLevel := viper.GetInt("one-off-vibration-level")
+		if vibrationLevel != 20 && vibrationLevel != 50 && vibrationLevel != 100 {
+			return fmt.Errorf("--vibration-level must be 20, 50, or 100")
+		}
+		pattern := strings.ToUpper(viper.GetString("one-off-pattern"))
+		if pattern != "RISE" && pattern != "INTENSE" {
+			return fmt.Errorf("--pattern must be RISE or INTENSE")
+		}
+		thermalEnabled := cmd.Flags().Changed("thermal-level") && !viper.GetBool("one-off-no-thermal")
+		thermalLevel := viper.GetInt("one-off-thermal-level")
+		if thermalEnabled && (thermalLevel < -100 || thermalLevel > 100) {
+			return fmt.Errorf("--thermal-level must be between -100 and 100")
+		}
+
+		cl := client.New(viper.GetString("email"), viper.GetString("password"), viper.GetString("user_id"), viper.GetString("client_id"), viper.GetString("client_secret"))
+		res, err := cl.CreateOneOffAlarm(context.Background(), client.OneOffAlarm{
+			Enabled: true,
+			Time:    timeStr,
+			Vibration: client.AlarmVibration{
+				Enabled:    !viper.GetBool("one-off-no-vibration"),
+				PowerLevel: vibrationLevel,
+				Pattern:    pattern,
+			},
+			Thermal: client.AlarmThermal{
+				Enabled: thermalEnabled,
+				Level:   thermalLevel,
+			},
+		})
+		if err != nil {
+			return err
+		}
+		if res.ID != "" {
+			fmt.Printf("created one-off alarm %s for %s\n", res.ID, res.Time)
+		} else {
+			fmt.Printf("created one-off alarm for %s\n", res.Time)
+		}
+		return nil
+	},
+}
+
+func normalizeAlarmTime(value string) (string, error) {
+	for _, layout := range []string{"15:04", "15:04:05"} {
+		parsed, err := time.Parse(layout, value)
+		if err == nil {
+			return parsed.Format("15:04:05"), nil
+		}
+	}
+	return "", fmt.Errorf("--time must be HH:MM or HH:MM:SS")
+}
+
 var alarmUpdateCmd = &cobra.Command{
 	Use:   "update <id>",
 	Short: "Update an alarm",
@@ -147,6 +209,19 @@ func init() {
 	viper.BindPFlag("no-vibration", alarmCreateCmd.Flags().Lookup("no-vibration"))
 	viper.BindPFlag("sound", alarmCreateCmd.Flags().Lookup("sound"))
 
+	alarmCreateOneOffCmd.Flags().String("time", "", "HH:MM or HH:MM:SS time")
+	alarmCreateOneOffCmd.Flags().Bool("no-vibration", false, "Disable vibration")
+	alarmCreateOneOffCmd.Flags().Int("vibration-level", 50, "Vibration level: 20, 50, or 100")
+	alarmCreateOneOffCmd.Flags().String("pattern", "RISE", "Vibration pattern: RISE or INTENSE")
+	alarmCreateOneOffCmd.Flags().Int("thermal-level", 0, "Thermal wake level (-100..100); enables thermal wake when supplied")
+	alarmCreateOneOffCmd.Flags().Bool("no-thermal", false, "Disable thermal wake")
+	viper.BindPFlag("one-off-time", alarmCreateOneOffCmd.Flags().Lookup("time"))
+	viper.BindPFlag("one-off-no-vibration", alarmCreateOneOffCmd.Flags().Lookup("no-vibration"))
+	viper.BindPFlag("one-off-vibration-level", alarmCreateOneOffCmd.Flags().Lookup("vibration-level"))
+	viper.BindPFlag("one-off-pattern", alarmCreateOneOffCmd.Flags().Lookup("pattern"))
+	viper.BindPFlag("one-off-thermal-level", alarmCreateOneOffCmd.Flags().Lookup("thermal-level"))
+	viper.BindPFlag("one-off-no-thermal", alarmCreateOneOffCmd.Flags().Lookup("no-thermal"))
+
 	alarmUpdateCmd.Flags().String("time", "", "HH:MM time")
 	alarmUpdateCmd.Flags().IntSlice("days", nil, "Comma-separated days 0=Sun..6=Sat")
 	alarmUpdateCmd.Flags().Bool("enabled", true, "Set enabled true/false")
@@ -159,7 +234,7 @@ func init() {
 	viper.BindPFlag("sound", alarmUpdateCmd.Flags().Lookup("sound"))
 
 	// add subcommands
-	alarmCmd.AddCommand(alarmListCmd, alarmCreateCmd, alarmUpdateCmd, alarmDeleteCmd, alarmSnoozeCmd, alarmDismissCmd, alarmDismissAllCmd, alarmVibeCmd)
+	alarmCmd.AddCommand(alarmListCmd, alarmCreateCmd, alarmCreateOneOffCmd, alarmUpdateCmd, alarmDeleteCmd, alarmSnoozeCmd, alarmDismissCmd, alarmDismissAllCmd, alarmVibeCmd)
 }
 
 // snooze

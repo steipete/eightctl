@@ -26,6 +26,27 @@ func TestClientCoreActionEndpoints(t *testing.T) {
 			bodyHas: `"time":"07:00"`,
 		},
 		{
+			name: "CreateOneOffAlarm",
+			call: func(ctx context.Context, c *Client) error {
+				_, err := c.CreateOneOffAlarm(ctx, OneOffAlarm{
+					Time:    "08:30:00",
+					Enabled: true,
+					Vibration: AlarmVibration{
+						Enabled:    true,
+						PowerLevel: 50,
+						Pattern:    "RISE",
+					},
+					Thermal: AlarmThermal{
+						Enabled: true,
+						Level:   -10,
+					},
+				})
+				return err
+			},
+			want:    recordedRequest{Method: http.MethodPost, Path: "/v1/users/uid/alarms"},
+			bodyHas: `"thermal":{"enabled":true,"level":-10}`,
+		},
+		{
 			name: "UpdateAlarm",
 			call: func(ctx context.Context, c *Client) error {
 				_, err := c.UpdateAlarm(ctx, "alarm-1", map[string]any{"enabled": false})

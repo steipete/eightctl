@@ -27,8 +27,11 @@ Schedules & daemon:
 - `daemon` (YAML-based scheduler with PID guard, dry-run, timezone override, optional state sync)
 
 Alarms:
-- `alarm list|create|update|delete`
+- `alarm list|create|create-one-off|update|delete`
 - `alarm snooze|dismiss|dismiss-all|vibration-test`
+- `alarm create-one-off` accepts `--time`, optional thermal wake with
+  `--thermal-level`, and vibration settings with `--vibration-level` and
+  `--pattern`.
 
 Temperature modes & events:
 - `tempmode nap on|off|extend|status`
