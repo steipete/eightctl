@@ -3,6 +3,7 @@ package client
 import (
 	"context"
 	"net/http"
+	"strings"
 	"testing"
 )
 
@@ -369,4 +370,59 @@ func TestClientCoreActionEndpoints(t *testing.T) {
 		},
 	}
 	assertActionEndpoints(t, tests)
+}
+
+func TestCreateOneOffAlarmReturnsNestedResponse(t *testing.T) {
+	c, _, cleanup := newRecordingClient(t)
+	defer cleanup()
+
+	got, err := c.CreateOneOffAlarm(context.Background(), OneOffAlarm{
+		Time:    "08:30:00",
+		Enabled: true,
+		Vibration: AlarmVibration{
+			Enabled:    true,
+			PowerLevel: 50,
+			Pattern:    "RISE",
+		},
+		Thermal: AlarmThermal{Enabled: true, Level: -10},
+	})
+	if err != nil {
+		t.Fatalf("CreateOneOffAlarm: %v", err)
+	}
+	if got.ID != "one-off-alarm" || got.Time != "08:30:00" {
+		t.Fatalf("alarm = %#v, want returned ID and time", got)
+	}
+	if got.Thermal.Level != -10 || !got.Thermal.Enabled {
+		t.Fatalf("thermal = %#v, want enabled level -10", got.Thermal)
+	}
+}
+
+func TestCreateOneOffAlarmPayload(t *testing.T) {
+	c, records, cleanup := newRecordingClient(t)
+	defer cleanup()
+
+	_, err := c.CreateOneOffAlarm(context.Background(), OneOffAlarm{
+		Time:    "08:30:00",
+		Enabled: true,
+		Vibration: AlarmVibration{
+			Enabled:    true,
+			PowerLevel: 50,
+			Pattern:    "RISE",
+		},
+		Thermal: AlarmThermal{Enabled: true, Level: -10},
+	})
+	if err != nil {
+		t.Fatalf("CreateOneOffAlarm: %v", err)
+	}
+
+	body := (*records)[0].Body
+	for _, want := range []string{
+		`"time":"08:30:00"`,
+		`"vibration":{"enabled":true,"powerLevel":50,"pattern":"RISE"}`,
+		`"thermal":{"enabled":true,"level":-10}`,
+	} {
+		if !strings.Contains(body, want) {
+			t.Fatalf("body = %q, missing %q", body, want)
+		}
+	}
 }

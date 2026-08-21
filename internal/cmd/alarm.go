@@ -98,11 +98,11 @@ var alarmCreateOneOffCmd = &cobra.Command{
 		if vibrationLevel != 20 && vibrationLevel != 50 && vibrationLevel != 100 {
 			return fmt.Errorf("--vibration-level must be 20, 50, or 100")
 		}
-		pattern := strings.ToUpper(viper.GetString("one-off-pattern"))
-		if pattern != "RISE" && pattern != "INTENSE" {
-			return fmt.Errorf("--pattern must be RISE or INTENSE")
+		pattern, err := normalizeOneOffPattern(viper.GetString("one-off-pattern"))
+		if err != nil {
+			return err
 		}
-		thermalEnabled := cmd.Flags().Changed("thermal-level") && !viper.GetBool("one-off-no-thermal")
+		thermalEnabled := oneOffThermalLevelProvided(cmd) && !viper.GetBool("one-off-no-thermal")
 		thermalLevel := viper.GetInt("one-off-thermal-level")
 		if thermalEnabled && (thermalLevel < -100 || thermalLevel > 100) {
 			return fmt.Errorf("--thermal-level must be between -100 and 100")
@@ -132,6 +132,21 @@ var alarmCreateOneOffCmd = &cobra.Command{
 		}
 		return nil
 	},
+}
+
+func normalizeOneOffPattern(value string) (string, error) {
+	switch strings.ToUpper(value) {
+	case "RISE":
+		return "RISE", nil
+	case "INTENSE":
+		return "intense", nil
+	default:
+		return "", fmt.Errorf("--pattern must be RISE or INTENSE")
+	}
+}
+
+func oneOffThermalLevelProvided(cmd *cobra.Command) bool {
+	return cmd.Flags().Changed("thermal-level") || viper.IsSet("one-off-thermal-level")
 }
 
 func normalizeAlarmTime(value string) (string, error) {

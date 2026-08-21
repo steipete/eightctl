@@ -62,6 +62,8 @@ func writeActionResponse(t *testing.T, w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.URL.Path == "/users/uid/alarms" && r.Method == http.MethodGet:
 		io.WriteString(w, `{"alarms":[{"id":"alarm-1","time":"07:00","enabled":true,"daysOfWeek":[1],"vibration":true}]}`)
+	case r.URL.Path == "/v1/users/uid/alarms" && r.Method == http.MethodPost:
+		io.WriteString(w, `{"alarm":{"id":"one-off-alarm","time":"08:30:00","enabled":true,"vibration":{"enabled":true,"powerLevel":50,"pattern":"RISE"},"thermal":{"enabled":true,"level":-10}}}`)
 	case strings.HasPrefix(r.URL.Path, "/users/uid/alarms") && (r.Method == http.MethodPost || r.Method == http.MethodPatch):
 		io.WriteString(w, `{"alarm":{"id":"alarm-1","time":"07:00","enabled":true}}`)
 	case r.URL.Path == "/users/uid/audio/tracks" || r.URL.Path == "/audio/tracks":
