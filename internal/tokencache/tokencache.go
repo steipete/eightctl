@@ -57,7 +57,13 @@ func SetOpenFileKeyringForTest(fn func() (keyring.Keyring, error)) (restore func
 
 func defaultOpenKeyring() (keyring.Keyring, error) {
 	home, _ := os.UserHomeDir()
-	return keyring.Open(keyring.Config{
+	config := defaultKeyringConfig()
+	config.FileDir = filepath.Join(home, ".config", "eightctl", "keyring")
+	return keyring.Open(config)
+}
+
+func defaultKeyringConfig() keyring.Config {
+	return keyring.Config{
 		ServiceName: serviceName,
 		AllowedBackends: []keyring.BackendType{
 			keyring.KeychainBackend,
@@ -65,9 +71,9 @@ func defaultOpenKeyring() (keyring.Keyring, error) {
 			keyring.WinCredBackend,
 			keyring.FileBackend,
 		},
-		FileDir:          filepath.Join(home, ".config", "eightctl", "keyring"),
-		FilePasswordFunc: filePassword,
-	})
+		FilePasswordFunc:         filePassword,
+		KeychainTrustApplication: true,
+	}
 }
 
 func defaultOpenFileKeyring() (keyring.Keyring, error) {

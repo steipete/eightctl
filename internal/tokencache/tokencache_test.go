@@ -283,6 +283,13 @@ func TestDefaultOpenFileKeyring(t *testing.T) {
 	}
 }
 
+func TestDefaultKeyringTrustsApplication(t *testing.T) {
+	config := defaultKeyringConfig()
+	if !config.KeychainTrustApplication {
+		t.Fatal("default macOS keychain items should trust the calling application")
+	}
+}
+
 func TestIdentityKeyFromStorageKey(t *testing.T) {
 	id := Identity{BaseURL: "https://api.example.com", ClientID: "client", Email: "user@example.com"}
 	raw, ok := identityKeyFromStorageKey(storageKey(id))
