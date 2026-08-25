@@ -111,6 +111,23 @@ func TestCreateOneOffAlarmSendsSmartSettings(t *testing.T) {
 	}
 }
 
+func TestDecodeOneOffAlarmResponseAcceptsEnvelopeAndDirectAlarm(t *testing.T) {
+	for name, payload := range map[string]string{
+		"envelope": `{"alarm":{"id":"envelope"}}`,
+		"direct":   `{"id":"direct"}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			alarm, err := decodeOneOffAlarmResponse([]byte(payload))
+			if err != nil {
+				t.Fatalf("decodeOneOffAlarmResponse: %v", err)
+			}
+			if alarm.ID != name {
+				t.Fatalf("alarm ID = %q, want %q", alarm.ID, name)
+			}
+		})
+	}
+}
+
 func TestListAlarmsV2ReadsPersistedSmartSettings(t *testing.T) {
 	c, _, cleanup := newRecordingClient(t)
 	defer cleanup()
@@ -119,7 +136,7 @@ func TestListAlarmsV2ReadsPersistedSmartSettings(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ListAlarmsV2: %v", err)
 	}
-	if len(alarms) != 1 || alarms[0].Smart == nil || !alarms[0].Smart.LightSleepEnabled {
+	if len(alarms) != 1 || alarms[0].Smart == nil || !alarms[0].Smart.LightSleepEnabled || alarms[0].Smart.SleepCapEnabled || alarms[0].Smart.SleepCapMinutes != 480 {
 		t.Fatalf("alarms = %#v, want persisted Smart Alarm", alarms)
 	}
 }

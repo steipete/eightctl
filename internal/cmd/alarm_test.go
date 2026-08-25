@@ -78,6 +78,23 @@ func TestSmartAlarmSettingsAreExplicit(t *testing.T) {
 	}
 }
 
+func TestOneOffAlarmPayloadIncludesSmartSetting(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+	viper.Set("one-off-time", "08:30")
+	viper.Set("one-off-vibration-level", 50)
+	viper.Set("one-off-pattern", "RISE")
+	viper.Set("one-off-smart", true)
+
+	alarm, err := oneOffAlarmFromFlags(alarmCreateOneOffCmd)
+	if err != nil {
+		t.Fatalf("oneOffAlarmFromFlags: %v", err)
+	}
+	if alarm.Smart == nil || !alarm.Smart.LightSleepEnabled || alarm.Smart.SleepCapEnabled || alarm.Smart.SleepCapMinutes != 480 {
+		t.Fatalf("alarm Smart settings = %#v, want explicit Smart Alarm settings", alarm.Smart)
+	}
+}
+
 func TestValidateOneOffThermalLevelRejectsOutOfRangeValues(t *testing.T) {
 	if err := validateOneOffThermalLevel(true, -100); err != nil {
 		t.Fatalf("minimum thermal level rejected: %v", err)
@@ -102,6 +119,20 @@ func TestVerifyPersistedSmartAlarmRetriesTransientReadBack(t *testing.T) {
 	}, 3, 0)
 	if err != nil {
 		t.Fatalf("verifyPersistedSmartAlarm: %v", err)
+	}
+	if attempts != 3 {
+		t.Fatalf("attempts = %d, want 3", attempts)
+	}
+}
+
+func TestVerifyPersistedSmartAlarmReportsExhaustedRetries(t *testing.T) {
+	attempts := 0
+	err := verifyPersistedSmartAlarm(func() (*client.OneOffAlarm, error) {
+		attempts++
+		return nil, errors.New("alarm not visible")
+	}, 3, 0)
+	if err == nil {
+		t.Fatal("expected exhausted read-back retries to fail")
 	}
 	if attempts != 3 {
 		t.Fatalf("attempts = %d, want 3", attempts)

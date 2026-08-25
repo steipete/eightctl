@@ -90,40 +90,14 @@ var alarmCreateOneOffCmd = &cobra.Command{
 		if err := requireAuthFields(); err != nil {
 			return err
 		}
-		timeStr, err := normalizeAlarmTime(viper.GetString("one-off-time"))
+		alarm, err := oneOffAlarmFromFlags(cmd)
 		if err != nil {
 			return err
 		}
-		vibrationLevel := viper.GetInt("one-off-vibration-level")
-		if vibrationLevel != 20 && vibrationLevel != 50 && vibrationLevel != 100 {
-			return fmt.Errorf("--vibration-level must be 20, 50, or 100")
-		}
-		pattern, err := normalizeOneOffPattern(viper.GetString("one-off-pattern"))
-		if err != nil {
-			return err
-		}
-		thermalEnabled := oneOffThermalLevelProvided(cmd) && !viper.GetBool("one-off-no-thermal")
-		thermalLevel := viper.GetInt("one-off-thermal-level")
-		if err := validateOneOffThermalLevel(oneOffThermalLevelProvided(cmd), thermalLevel); err != nil {
-			return err
-		}
-		smart := smartAlarmSettings(viper.GetBool("one-off-smart"))
+		smart := alarm.Smart
 
 		cl := client.New(viper.GetString("email"), viper.GetString("password"), viper.GetString("user_id"), viper.GetString("client_id"), viper.GetString("client_secret"))
-		res, err := cl.CreateOneOffAlarm(context.Background(), client.OneOffAlarm{
-			Enabled: true,
-			Time:    timeStr,
-			Vibration: client.AlarmVibration{
-				Enabled:    !viper.GetBool("one-off-no-vibration"),
-				PowerLevel: vibrationLevel,
-				Pattern:    pattern,
-			},
-			Thermal: client.AlarmThermal{
-				Enabled: thermalEnabled,
-				Level:   thermalLevel,
-			},
-			Smart: smart,
-		})
+		res, err := cl.CreateOneOffAlarm(context.Background(), alarm)
 		if err != nil {
 			return err
 		}
@@ -144,6 +118,40 @@ var alarmCreateOneOffCmd = &cobra.Command{
 		}
 		return nil
 	},
+}
+
+func oneOffAlarmFromFlags(cmd *cobra.Command) (client.OneOffAlarm, error) {
+	timeStr, err := normalizeAlarmTime(viper.GetString("one-off-time"))
+	if err != nil {
+		return client.OneOffAlarm{}, err
+	}
+	vibrationLevel := viper.GetInt("one-off-vibration-level")
+	if vibrationLevel != 20 && vibrationLevel != 50 && vibrationLevel != 100 {
+		return client.OneOffAlarm{}, fmt.Errorf("--vibration-level must be 20, 50, or 100")
+	}
+	pattern, err := normalizeOneOffPattern(viper.GetString("one-off-pattern"))
+	if err != nil {
+		return client.OneOffAlarm{}, err
+	}
+	thermalEnabled := oneOffThermalLevelProvided(cmd) && !viper.GetBool("one-off-no-thermal")
+	thermalLevel := viper.GetInt("one-off-thermal-level")
+	if err := validateOneOffThermalLevel(oneOffThermalLevelProvided(cmd), thermalLevel); err != nil {
+		return client.OneOffAlarm{}, err
+	}
+	return client.OneOffAlarm{
+		Enabled: true,
+		Time:    timeStr,
+		Vibration: client.AlarmVibration{
+			Enabled:    !viper.GetBool("one-off-no-vibration"),
+			PowerLevel: vibrationLevel,
+			Pattern:    pattern,
+		},
+		Thermal: client.AlarmThermal{
+			Enabled: thermalEnabled,
+			Level:   thermalLevel,
+		},
+		Smart: smartAlarmSettings(viper.GetBool("one-off-smart")),
+	}, nil
 }
 
 func verifySmartAlarm(alarm *client.OneOffAlarm) error {

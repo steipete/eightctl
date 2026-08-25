@@ -2,6 +2,7 @@ package client
 
 import (
 	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 )
@@ -83,13 +84,34 @@ func (c *Client) CreateOneOffAlarm(ctx context.Context, alarm OneOffAlarm) (*One
 		return nil, err
 	}
 	path := fmt.Sprintf("/v1/users/%s/alarms", c.UserID)
-	var res struct {
-		Alarm OneOffAlarm `json:"alarm"`
-	}
-	if err := c.doApp(ctx, http.MethodPost, path, nil, alarm, &res); err != nil {
+	var raw json.RawMessage
+	if err := c.doApp(ctx, http.MethodPost, path, nil, alarm, &raw); err != nil {
 		return nil, err
 	}
-	return &res.Alarm, nil
+	created, err := decodeOneOffAlarmResponse(raw)
+	if err != nil {
+		return nil, err
+	}
+	return &created, nil
+}
+
+func decodeOneOffAlarmResponse(data []byte) (OneOffAlarm, error) {
+	var fields map[string]json.RawMessage
+	if err := json.Unmarshal(data, &fields); err != nil {
+		return OneOffAlarm{}, err
+	}
+	if alarmData, ok := fields["alarm"]; ok && string(alarmData) != "null" {
+		var alarm OneOffAlarm
+		if err := json.Unmarshal(alarmData, &alarm); err != nil {
+			return OneOffAlarm{}, err
+		}
+		return alarm, nil
+	}
+	var alarm OneOffAlarm
+	if err := json.Unmarshal(data, &alarm); err != nil {
+		return OneOffAlarm{}, err
+	}
+	return alarm, nil
 }
 
 // ListAlarmsV2 reads the current app alarm representation, including Smart
