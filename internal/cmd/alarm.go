@@ -107,6 +107,7 @@ var alarmCreateOneOffCmd = &cobra.Command{
 		if thermalEnabled && (thermalLevel < -100 || thermalLevel > 100) {
 			return fmt.Errorf("--thermal-level must be between -100 and 100")
 		}
+		smart := smartAlarmSettings(viper.GetBool("one-off-smart"))
 
 		cl := client.New(viper.GetString("email"), viper.GetString("password"), viper.GetString("user_id"), viper.GetString("client_id"), viper.GetString("client_secret"))
 		res, err := cl.CreateOneOffAlarm(context.Background(), client.OneOffAlarm{
@@ -121,9 +122,25 @@ var alarmCreateOneOffCmd = &cobra.Command{
 				Enabled: thermalEnabled,
 				Level:   thermalLevel,
 			},
+			Smart: smart,
 		})
 		if err != nil {
 			return err
+		}
+		if smart != nil {
+			if err := verifySmartAlarm(res); err != nil {
+				return err
+			}
+			if res.ID == "" {
+				return fmt.Errorf("Smart Alarm response did not include an ID for read-back")
+			}
+			persisted, err := cl.FindAlarmV2(context.Background(), res.ID)
+			if err != nil {
+				return fmt.Errorf("Smart Alarm read-back failed: %w", err)
+			}
+			if err := verifySmartAlarm(persisted); err != nil {
+				return fmt.Errorf("Smart Alarm read-back failed: %w", err)
+			}
 		}
 		if res.ID != "" {
 			fmt.Printf("created one-off alarm %s for %s\n", res.ID, res.Time)
@@ -132,6 +149,27 @@ var alarmCreateOneOffCmd = &cobra.Command{
 		}
 		return nil
 	},
+}
+
+func verifySmartAlarm(alarm *client.OneOffAlarm) error {
+	if alarm == nil || alarm.Smart == nil || !alarm.Smart.LightSleepEnabled {
+		return fmt.Errorf("Eight Sleep did not confirm Smart Alarm light-sleep support")
+	}
+	if alarm.Smart.SleepCapEnabled || alarm.Smart.SleepCapMinutes != 480 {
+		return fmt.Errorf("Eight Sleep did not confirm the Smart Alarm sleep cap settings")
+	}
+	return nil
+}
+
+func smartAlarmSettings(enabled bool) *client.AlarmSmart {
+	if !enabled {
+		return nil
+	}
+	return &client.AlarmSmart{
+		LightSleepEnabled: true,
+		SleepCapEnabled:   false,
+		SleepCapMinutes:   480,
+	}
 }
 
 func normalizeOneOffPattern(value string) (string, error) {
@@ -230,12 +268,14 @@ func init() {
 	alarmCreateOneOffCmd.Flags().String("pattern", "RISE", "Vibration pattern: RISE or INTENSE")
 	alarmCreateOneOffCmd.Flags().Int("thermal-level", 0, "Thermal wake level (-100..100); enables thermal wake when supplied")
 	alarmCreateOneOffCmd.Flags().Bool("no-thermal", false, "Disable thermal wake")
+	alarmCreateOneOffCmd.Flags().Bool("smart", false, "Enable Smart Alarm/light-sleep wake window")
 	viper.BindPFlag("one-off-time", alarmCreateOneOffCmd.Flags().Lookup("time"))
 	viper.BindPFlag("one-off-no-vibration", alarmCreateOneOffCmd.Flags().Lookup("no-vibration"))
 	viper.BindPFlag("one-off-vibration-level", alarmCreateOneOffCmd.Flags().Lookup("vibration-level"))
 	viper.BindPFlag("one-off-pattern", alarmCreateOneOffCmd.Flags().Lookup("pattern"))
 	viper.BindPFlag("one-off-thermal-level", alarmCreateOneOffCmd.Flags().Lookup("thermal-level"))
 	viper.BindPFlag("one-off-no-thermal", alarmCreateOneOffCmd.Flags().Lookup("no-thermal"))
+	viper.BindPFlag("one-off-smart", alarmCreateOneOffCmd.Flags().Lookup("smart"))
 
 	alarmUpdateCmd.Flags().String("time", "", "HH:MM time")
 	alarmUpdateCmd.Flags().IntSlice("days", nil, "Comma-separated days 0=Sun..6=Sat")

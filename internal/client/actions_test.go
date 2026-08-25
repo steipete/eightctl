@@ -62,6 +62,8 @@ func writeActionResponse(t *testing.T, w http.ResponseWriter, r *http.Request) {
 	switch {
 	case r.URL.Path == "/users/uid/alarms" && r.Method == http.MethodGet:
 		io.WriteString(w, `{"alarms":[{"id":"alarm-1","time":"07:00","enabled":true,"daysOfWeek":[1],"vibration":true}]}`)
+	case r.URL.Path == "/v2/users/uid/alarms" && r.Method == http.MethodGet:
+		io.WriteString(w, `{"alarms":[{"id":"one-off-alarm","time":"08:30:00","enabled":true,"smart":{"lightSleepEnabled":true,"sleepCapEnabled":false,"sleepCapMinutes":480}}]}`)
 	case r.URL.Path == "/v1/users/uid/alarms" && r.Method == http.MethodPost:
 		io.WriteString(w, `{"alarm":{"id":"one-off-alarm","time":"08:30:00","enabled":true,"vibration":{"enabled":true,"powerLevel":50,"pattern":"RISE"},"thermal":{"enabled":true,"level":-10}}}`)
 	case strings.HasPrefix(r.URL.Path, "/users/uid/alarms") && (r.Method == http.MethodPost || r.Method == http.MethodPatch):
@@ -76,6 +78,75 @@ func writeActionResponse(t *testing.T, w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, `{"days":[{"day":"2026-04-22","score":88}]}`)
 	default:
 		json.NewEncoder(w).Encode(map[string]any{"ok": true})
+	}
+}
+
+func TestCreateOneOffAlarmSendsSmartSettings(t *testing.T) {
+	c, records, cleanup := newRecordingClient(t)
+	defer cleanup()
+
+	_, err := c.CreateOneOffAlarm(context.Background(), OneOffAlarm{
+		Enabled: true,
+		Time:    "08:30:00",
+		Smart: &AlarmSmart{
+			LightSleepEnabled: true,
+			SleepCapEnabled:   false,
+			SleepCapMinutes:   480,
+		},
+	})
+	if err != nil {
+		t.Fatalf("CreateOneOffAlarm: %v", err)
+	}
+	if len(*records) != 1 {
+		t.Fatalf("recorded requests = %d, want 1", len(*records))
+	}
+	if !strings.Contains((*records)[0].Body, `"lightSleepEnabled":true`) {
+		t.Fatalf("request body = %q, missing Smart Alarm setting", (*records)[0].Body)
+	}
+}
+
+func TestListAlarmsV2ReadsPersistedSmartSettings(t *testing.T) {
+	c, _, cleanup := newRecordingClient(t)
+	defer cleanup()
+
+	alarms, err := c.ListAlarmsV2(context.Background())
+	if err != nil {
+		t.Fatalf("ListAlarmsV2: %v", err)
+	}
+	if len(alarms) != 1 || alarms[0].Smart == nil || !alarms[0].Smart.LightSleepEnabled {
+		t.Fatalf("alarms = %#v, want persisted Smart Alarm", alarms)
+	}
+}
+
+func TestFindAlarmV2ReturnsMatchingAlarm(t *testing.T) {
+	c, _, cleanup := newRecordingClient(t)
+	defer cleanup()
+
+	alarm, err := c.FindAlarmV2(context.Background(), "one-off-alarm")
+	if err != nil {
+		t.Fatalf("FindAlarmV2: %v", err)
+	}
+	if alarm.ID != "one-off-alarm" {
+		t.Fatalf("alarm ID = %q, want one-off-alarm", alarm.ID)
+	}
+}
+
+func TestFindAlarmV2ReportsMissingAlarm(t *testing.T) {
+	c, _, cleanup := newRecordingClient(t)
+	defer cleanup()
+
+	if _, err := c.FindAlarmV2(context.Background(), "missing"); err == nil {
+		t.Fatal("expected missing alarm to fail")
+	}
+}
+
+func TestListAlarmsV2RequiresAUser(t *testing.T) {
+	c, _, cleanup := newRecordingClient(t)
+	defer cleanup()
+	c.UserID = ""
+
+	if _, err := c.ListAlarmsV2(context.Background()); err == nil {
+		t.Fatal("expected missing user ID to fail")
 	}
 }
 

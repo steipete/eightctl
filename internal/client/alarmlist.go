@@ -29,6 +29,13 @@ type AlarmThermal struct {
 	Level   int  `json:"level"`
 }
 
+// AlarmSmart describes the light-sleep wake window for a one-off alarm.
+type AlarmSmart struct {
+	LightSleepEnabled bool `json:"lightSleepEnabled"`
+	SleepCapEnabled   bool `json:"sleepCapEnabled"`
+	SleepCapMinutes   int  `json:"sleepCapMinutes"`
+}
+
 // OneOffAlarm is the current app-API payload for a single-use alarm.
 type OneOffAlarm struct {
 	ID            string         `json:"id,omitempty"`
@@ -37,6 +44,7 @@ type OneOffAlarm struct {
 	NextTimestamp string         `json:"nextTimestamp,omitempty"`
 	Vibration     AlarmVibration `json:"vibration"`
 	Thermal       AlarmThermal   `json:"thermal"`
+	Smart         *AlarmSmart    `json:"smart,omitempty"`
 }
 
 func (c *Client) ListAlarms(ctx context.Context) ([]Alarm, error) {
@@ -82,6 +90,36 @@ func (c *Client) CreateOneOffAlarm(ctx context.Context, alarm OneOffAlarm) (*One
 		return nil, err
 	}
 	return &res.Alarm, nil
+}
+
+// ListAlarmsV2 reads the current app alarm representation, including Smart
+// Alarm settings returned by the current alarm endpoint.
+func (c *Client) ListAlarmsV2(ctx context.Context) ([]OneOffAlarm, error) {
+	if err := c.requireUser(ctx); err != nil {
+		return nil, err
+	}
+	path := fmt.Sprintf("/v2/users/%s/alarms", c.UserID)
+	var res struct {
+		Alarms []OneOffAlarm `json:"alarms"`
+	}
+	if err := c.doApp(ctx, http.MethodGet, path, nil, nil, &res); err != nil {
+		return nil, err
+	}
+	return res.Alarms, nil
+}
+
+// FindAlarmV2 returns one alarm from the current app alarm representation.
+func (c *Client) FindAlarmV2(ctx context.Context, alarmID string) (*OneOffAlarm, error) {
+	alarms, err := c.ListAlarmsV2(ctx)
+	if err != nil {
+		return nil, err
+	}
+	for _, alarm := range alarms {
+		if alarm.ID == alarmID {
+			return &alarm, nil
+		}
+	}
+	return nil, fmt.Errorf("alarm %s was not found in the current alarm list", alarmID)
 }
 
 func (c *Client) UpdateAlarm(ctx context.Context, alarmID string, patch map[string]any) (*Alarm, error) {

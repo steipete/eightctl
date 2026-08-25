@@ -4,6 +4,8 @@ import (
 	"testing"
 
 	"github.com/spf13/viper"
+
+	"github.com/steipete/eightctl/internal/client"
 )
 
 func TestNormalizeAlarmTime(t *testing.T) {
@@ -40,6 +42,31 @@ func TestNormalizeOneOffPattern(t *testing.T) {
 	}
 	if _, err := normalizeOneOffPattern("unknown"); err == nil {
 		t.Fatal("expected unknown pattern to fail")
+	}
+}
+
+func TestVerifySmartAlarmRequiresLightSleepAndDisabledCap(t *testing.T) {
+	if err := verifySmartAlarm(&client.OneOffAlarm{
+		Smart: &client.AlarmSmart{
+			LightSleepEnabled: true,
+			SleepCapEnabled:   false,
+			SleepCapMinutes:   480,
+		},
+	}); err != nil {
+		t.Fatalf("valid Smart Alarm rejected: %v", err)
+	}
+	if err := verifySmartAlarm(&client.OneOffAlarm{Smart: &client.AlarmSmart{}}); err == nil {
+		t.Fatal("expected missing light-sleep support to fail")
+	}
+}
+
+func TestSmartAlarmSettingsAreExplicit(t *testing.T) {
+	if smartAlarmSettings(false) != nil {
+		t.Fatal("disabled Smart Alarm flag should omit Smart Alarm settings")
+	}
+	settings := smartAlarmSettings(true)
+	if settings == nil || !settings.LightSleepEnabled || settings.SleepCapEnabled || settings.SleepCapMinutes != 480 {
+		t.Fatalf("settings = %#v, want light sleep enabled with a disabled 480-minute cap", settings)
 	}
 }
 
