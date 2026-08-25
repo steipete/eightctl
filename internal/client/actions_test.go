@@ -100,8 +100,14 @@ func TestCreateOneOffAlarmSendsSmartSettings(t *testing.T) {
 	if len(*records) != 1 {
 		t.Fatalf("recorded requests = %d, want 1", len(*records))
 	}
-	if !strings.Contains((*records)[0].Body, `"lightSleepEnabled":true`) {
-		t.Fatalf("request body = %q, missing Smart Alarm setting", (*records)[0].Body)
+	for _, field := range []string{
+		`"lightSleepEnabled":true`,
+		`"sleepCapEnabled":false`,
+		`"sleepCapMinutes":480`,
+	} {
+		if !strings.Contains((*records)[0].Body, field) {
+			t.Fatalf("request body = %q, missing Smart Alarm setting %s", (*records)[0].Body, field)
+		}
 	}
 }
 

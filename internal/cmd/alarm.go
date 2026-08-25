@@ -131,11 +131,9 @@ var alarmCreateOneOffCmd = &cobra.Command{
 			if res.ID == "" {
 				return fmt.Errorf("Smart Alarm creation may have succeeded, but the response did not include an ID for read-back")
 			}
-			persisted, err := cl.FindAlarmV2(context.Background(), res.ID)
-			if err != nil {
-				return fmt.Errorf("Smart Alarm creation may have succeeded for %s, but read-back failed: %w", res.ID, err)
-			}
-			if err := verifySmartAlarm(persisted); err != nil {
+			if err := verifyPersistedSmartAlarm(func() (*client.OneOffAlarm, error) {
+				return cl.FindAlarmV2(context.Background(), res.ID)
+			}, 3, 250*time.Millisecond); err != nil {
 				return fmt.Errorf("Smart Alarm creation may have succeeded for %s, but read-back failed: %w", res.ID, err)
 			}
 		}
@@ -156,6 +154,29 @@ func verifySmartAlarm(alarm *client.OneOffAlarm) error {
 		return fmt.Errorf("Eight Sleep did not confirm the Smart Alarm sleep cap settings")
 	}
 	return nil
+}
+
+func verifyPersistedSmartAlarm(find func() (*client.OneOffAlarm, error), attempts int, delay time.Duration) error {
+	if attempts < 1 {
+		return fmt.Errorf("Smart Alarm read-back requires at least one attempt")
+	}
+	var lastErr error
+	for attempt := 0; attempt < attempts; attempt++ {
+		alarm, err := find()
+		if err == nil {
+			if err := verifySmartAlarm(alarm); err == nil {
+				return nil
+			} else {
+				lastErr = err
+			}
+		} else {
+			lastErr = err
+		}
+		if attempt+1 < attempts {
+			time.Sleep(delay)
+		}
+	}
+	return lastErr
 }
 
 func smartAlarmSettings(enabled bool) *client.AlarmSmart {

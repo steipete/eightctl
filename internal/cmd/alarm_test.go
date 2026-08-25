@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"testing"
 
 	"github.com/spf13/viper"
@@ -58,6 +59,13 @@ func TestVerifySmartAlarmRequiresLightSleepAndDisabledCap(t *testing.T) {
 	if err := verifySmartAlarm(&client.OneOffAlarm{Smart: &client.AlarmSmart{}}); err == nil {
 		t.Fatal("expected missing light-sleep support to fail")
 	}
+	if err := verifySmartAlarm(&client.OneOffAlarm{Smart: &client.AlarmSmart{
+		LightSleepEnabled: true,
+		SleepCapEnabled:   true,
+		SleepCapMinutes:   480,
+	}}); err == nil {
+		t.Fatal("expected enabled sleep cap to fail")
+	}
 }
 
 func TestSmartAlarmSettingsAreExplicit(t *testing.T) {
@@ -76,6 +84,27 @@ func TestValidateOneOffThermalLevelRejectsOutOfRangeValues(t *testing.T) {
 	}
 	if err := validateOneOffThermalLevel(true, 101); err == nil {
 		t.Fatal("out-of-range thermal level should fail even when thermal wake is disabled")
+	}
+}
+
+func TestVerifyPersistedSmartAlarmRetriesTransientReadBack(t *testing.T) {
+	attempts := 0
+	err := verifyPersistedSmartAlarm(func() (*client.OneOffAlarm, error) {
+		attempts++
+		if attempts < 3 {
+			return nil, errors.New("alarm not visible yet")
+		}
+		return &client.OneOffAlarm{Smart: &client.AlarmSmart{
+			LightSleepEnabled: true,
+			SleepCapEnabled:   false,
+			SleepCapMinutes:   480,
+		}}, nil
+	}, 3, 0)
+	if err != nil {
+		t.Fatalf("verifyPersistedSmartAlarm: %v", err)
+	}
+	if attempts != 3 {
+		t.Fatalf("attempts = %d, want 3", attempts)
 	}
 }
 
