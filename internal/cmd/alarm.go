@@ -104,8 +104,8 @@ var alarmCreateOneOffCmd = &cobra.Command{
 		}
 		thermalEnabled := oneOffThermalLevelProvided(cmd) && !viper.GetBool("one-off-no-thermal")
 		thermalLevel := viper.GetInt("one-off-thermal-level")
-		if thermalEnabled && (thermalLevel < -100 || thermalLevel > 100) {
-			return fmt.Errorf("--thermal-level must be between -100 and 100")
+		if err := validateOneOffThermalLevel(oneOffThermalLevelProvided(cmd), thermalLevel); err != nil {
+			return err
 		}
 		smart := smartAlarmSettings(viper.GetBool("one-off-smart"))
 
@@ -128,18 +128,15 @@ var alarmCreateOneOffCmd = &cobra.Command{
 			return err
 		}
 		if smart != nil {
-			if err := verifySmartAlarm(res); err != nil {
-				return err
-			}
 			if res.ID == "" {
-				return fmt.Errorf("Smart Alarm response did not include an ID for read-back")
+				return fmt.Errorf("Smart Alarm creation may have succeeded, but the response did not include an ID for read-back")
 			}
 			persisted, err := cl.FindAlarmV2(context.Background(), res.ID)
 			if err != nil {
-				return fmt.Errorf("Smart Alarm read-back failed: %w", err)
+				return fmt.Errorf("Smart Alarm creation may have succeeded for %s, but read-back failed: %w", res.ID, err)
 			}
 			if err := verifySmartAlarm(persisted); err != nil {
-				return fmt.Errorf("Smart Alarm read-back failed: %w", err)
+				return fmt.Errorf("Smart Alarm creation may have succeeded for %s, but read-back failed: %w", res.ID, err)
 			}
 		}
 		if res.ID != "" {
@@ -185,6 +182,13 @@ func normalizeOneOffPattern(value string) (string, error) {
 
 func oneOffThermalLevelProvided(cmd *cobra.Command) bool {
 	return cmd.Flags().Changed("thermal-level") || viper.IsSet("one-off-thermal-level")
+}
+
+func validateOneOffThermalLevel(provided bool, level int) error {
+	if provided && (level < -100 || level > 100) {
+		return fmt.Errorf("--thermal-level must be between -100 and 100")
+	}
+	return nil
 }
 
 func normalizeAlarmTime(value string) (string, error) {

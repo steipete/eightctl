@@ -42,10 +42,11 @@ eightctl temp -40 --side right
 
 `status`, `on`, `off`, and `temp` act on all discovered household sides unless you select one with `--side left|right|solo` or `--target-user-id <id>`.
 
-Create a one-time vibration alarm, optionally with thermal wake:
+Create a one-time vibration alarm, optionally with thermal wake or Smart Alarm
+light-sleep support:
 
 ```sh
-eightctl alarm create-one-off --time 08:30 --thermal-level -10
+eightctl alarm create-one-off --time 08:30 --thermal-level -10 --smart
 ```
 
 ## Commands

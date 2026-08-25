@@ -70,6 +70,15 @@ func TestSmartAlarmSettingsAreExplicit(t *testing.T) {
 	}
 }
 
+func TestValidateOneOffThermalLevelRejectsOutOfRangeValues(t *testing.T) {
+	if err := validateOneOffThermalLevel(true, -100); err != nil {
+		t.Fatalf("minimum thermal level rejected: %v", err)
+	}
+	if err := validateOneOffThermalLevel(true, 101); err == nil {
+		t.Fatal("out-of-range thermal level should fail even when thermal wake is disabled")
+	}
+}
+
 func TestOneOffThermalLevelProvidedFromConfig(t *testing.T) {
 	viper.Reset()
 	t.Cleanup(viper.Reset)

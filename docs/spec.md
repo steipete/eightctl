@@ -30,8 +30,9 @@ Alarms:
 - `alarm list|create|create-one-off|update|delete`
 - `alarm snooze|dismiss|dismiss-all|vibration-test`
 - `alarm create-one-off` accepts `--time`, optional thermal wake with
-  `--thermal-level`, and vibration settings with `--vibration-level` and
-  `--pattern`.
+	`--thermal-level`, and vibration settings with `--vibration-level` and
+	`--pattern`. `--smart` enables the light-sleep wake window and verifies the
+	persisted Smart Alarm settings through the current app alarm endpoint.
 
 Temperature modes & events:
 - `tempmode nap on|off|extend|status`
