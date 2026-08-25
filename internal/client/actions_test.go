@@ -128,6 +128,14 @@ func TestDecodeOneOffAlarmResponseAcceptsEnvelopeAndDirectAlarm(t *testing.T) {
 	}
 }
 
+func TestDecodeOneOffAlarmResponseRejectsMalformedPayloads(t *testing.T) {
+	for _, payload := range []string{`{`, `{"alarm":"not-an-object"}`} {
+		if _, err := decodeOneOffAlarmResponse([]byte(payload)); err == nil {
+			t.Fatalf("payload %q should fail", payload)
+		}
+	}
+}
+
 func TestListAlarmsV2ReadsPersistedSmartSettings(t *testing.T) {
 	c, _, cleanup := newRecordingClient(t)
 	defer cleanup()
