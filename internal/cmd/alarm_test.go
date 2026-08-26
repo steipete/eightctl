@@ -93,6 +93,26 @@ func TestOneOffAlarmPayloadIncludesSmartSetting(t *testing.T) {
 	if alarm.Smart == nil || !alarm.Smart.LightSleepEnabled || alarm.Smart.SleepCapEnabled || alarm.Smart.SleepCapMinutes != 480 {
 		t.Fatalf("alarm Smart settings = %#v, want explicit Smart Alarm settings", alarm.Smart)
 	}
+	if !alarm.Thermal.Enabled || alarm.Thermal.Level != -100 {
+		t.Fatalf("Smart Alarm should default to -100 cold thermal wake, got %#v", alarm.Thermal)
+	}
+}
+
+func TestOneOffAlarmPayloadSmartDefaultsToCold(t *testing.T) {
+	viper.Reset()
+	t.Cleanup(viper.Reset)
+	viper.Set("one-off-time", "08:30")
+	viper.Set("one-off-vibration-level", 50)
+	viper.Set("one-off-pattern", "RISE")
+	viper.Set("one-off-smart", true)
+
+	alarm, err := oneOffAlarmFromFlags(alarmCreateOneOffCmd)
+	if err != nil {
+		t.Fatalf("oneOffAlarmFromFlags: %v", err)
+	}
+	if !alarm.Thermal.Enabled || alarm.Thermal.Level != -100 {
+		t.Fatalf("expected default cold thermal wake for Smart Alarm, got %#v", alarm.Thermal)
+	}
 }
 
 func TestValidateOneOffThermalLevelRejectsOutOfRangeValues(t *testing.T) {

@@ -133,9 +133,16 @@ func oneOffAlarmFromFlags(cmd *cobra.Command) (client.OneOffAlarm, error) {
 	if err != nil {
 		return client.OneOffAlarm{}, err
 	}
-	thermalEnabled := oneOffThermalLevelProvided(cmd) && !viper.GetBool("one-off-no-thermal")
+	smartEnabled := viper.GetBool("one-off-smart")
+	thermalProvided := oneOffThermalLevelProvided(cmd)
+	thermalEnabled := thermalProvided && !viper.GetBool("one-off-no-thermal")
 	thermalLevel := viper.GetInt("one-off-thermal-level")
-	if err := validateOneOffThermalLevel(oneOffThermalLevelProvided(cmd), thermalLevel); err != nil {
+	// Default Smart Alarms to cold (-100) for a sharper wake — studies suggest cold > heat for alertness.
+	if smartEnabled && !thermalProvided && !viper.GetBool("one-off-no-thermal") {
+		thermalEnabled = true
+		thermalLevel = -100
+	}
+	if err := validateOneOffThermalLevel(thermalProvided || (smartEnabled && thermalEnabled), thermalLevel); err != nil {
 		return client.OneOffAlarm{}, err
 	}
 	return client.OneOffAlarm{
@@ -150,7 +157,7 @@ func oneOffAlarmFromFlags(cmd *cobra.Command) (client.OneOffAlarm, error) {
 			Enabled: thermalEnabled,
 			Level:   thermalLevel,
 		},
-		Smart: smartAlarmSettings(viper.GetBool("one-off-smart")),
+		Smart: smartAlarmSettings(smartEnabled),
 	}, nil
 }
 
