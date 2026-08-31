@@ -52,19 +52,27 @@ func runAway(cmd *cobra.Command, on bool) error {
 		if target != nil {
 			return fmt.Errorf("--both conflicts with --side/--target-user-id")
 		}
-		sides, err := cl.Device().Sides(ctx)
+		// Deliberately NOT Device().Sides(): when every household member is
+		// already away, the device payload omits leftUserId/rightUserId, so
+		// Sides() returns empty strings. The old loop skipped both and made
+		// zero requests while still reporting success, which meant
+		// `away off --both` could never bring an all-away household home.
+		targets, err := cl.HouseholdUserTargets(ctx)
 		if err != nil {
-			return fmt.Errorf("fetching device sides: %w", err)
+			return fmt.Errorf("fetching household users: %w", err)
 		}
-		for _, uid := range []string{sides.LeftUserID, sides.RightUserID} {
-			if uid == "" {
+		if len(targets) == 0 {
+			return fmt.Errorf("no household users found")
+		}
+		for _, current := range targets {
+			if current.UserID == "" {
 				continue
 			}
-			if err := cl.SetAwayMode(ctx, uid, on); err != nil {
-				return fmt.Errorf("setting away for %s: %w", uid, err)
+			if err := cl.SetAwayMode(ctx, current.UserID, on); err != nil {
+				return fmt.Errorf("setting away for %s: %w", current.UserID, err)
 			}
 		}
-		scope = "both sides"
+		scope = fmt.Sprintf("%d household members", len(targets))
 	case target != nil:
 		if err := cl.SetAwayMode(ctx, target.UserID, on); err != nil {
 			return fmt.Errorf("setting away for %s: %w", target.UserID, err)
