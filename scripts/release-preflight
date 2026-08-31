@@ -28,11 +28,12 @@ work=$(mktemp -d "${TMPDIR:-/tmp}/eightctl-release-preflight.XXXXXX")
 trap 'rm -rf "$work"' EXIT
 
 set +e
-release_response=$(gh api "repos/$repository/releases/tags/$tag" 2>&1)
+release_response=$(gh api "repos/$repository/releases/tags/$tag" 2>"$work/release-error")
 api_rc=$?
 set -e
+cat "$work/release-error" >&2
 if [[ $api_rc -ne 0 ]]; then
-	if [[ "$release_response" == *"HTTP 404"* ]]; then
+	if grep -q 'HTTP 404' "$work/release-error"; then
 		echo "already-published=false"
 		if [[ -n "${GITHUB_OUTPUT:-}" ]]; then
 			echo "already-published=false" >> "$GITHUB_OUTPUT"

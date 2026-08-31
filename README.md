@@ -21,7 +21,7 @@ brew install steipete/tap/eightctl
 
 Prebuilt archives for macOS, Linux, and Windows on amd64 and arm64 are available from the [latest GitHub release](https://github.com/steipete/eightctl/releases/latest).
 
-To build and install from source, use Go 1.26.6 or newer:
+To build and install from source, use Go 1.26.7 or newer:
 
 ```sh
 go install github.com/steipete/eightctl/cmd/eightctl@latest
@@ -69,6 +69,8 @@ schedule:
 ```
 
 Keep the file readable only by your account with `chmod 600 ~/.config/eightctl/config.yaml`. The optional `user_id` is resolved after authentication, and the public app OAuth client is used unless `client_id` and `client_secret` are set.
+
+Schedule times and dates use the configured `timezone`, even when it differs from the host timezone.
 
 Preview scheduled actions without changing the pod, then remove `--dry-run` when the schedule is ready:
 

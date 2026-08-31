@@ -9,8 +9,8 @@ import (
 	"strings"
 	"time"
 
+	"charm.land/log/v2"
 	"github.com/99designs/keyring"
-	"github.com/charmbracelet/log"
 )
 
 const (

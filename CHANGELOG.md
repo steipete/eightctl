@@ -6,6 +6,9 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 
 ## Unreleased
 
+- Fixed daemon schedules being missed when the configured timezone and host timezone fall on different dates.
+- Updated to Charm Log v2 for terminal-aware log colors, the maintained YAML v3 parser, and Go 1.26.7 for the latest HTTP fixes.
+
 ## 0.2.3 - 2026-08-14
 
 ### Release engineering

@@ -64,6 +64,8 @@ func (r *Runner) Run(ctx context.Context) error {
 }
 
 func (r *Runner) process(now time.Time, executed map[string]bool) error {
+	// Ticker timestamps use the host zone; schedules use their configured date.
+	now = now.In(r.Timezone)
 	for _, item := range r.Items {
 		t, err := time.ParseInLocation("15:04", item.Time, r.Timezone)
 		if err != nil {
