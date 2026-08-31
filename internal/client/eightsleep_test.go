@@ -430,3 +430,78 @@ func TestAuthTokenEndpointUsesClientCredentials(t *testing.T) {
 		t.Fatalf("user id = %q, want uid-123", c.UserID)
 	}
 }
+
+func TestGetAwayMode(t *testing.T) {
+	var gotMethod, gotPath string
+
+	mux := http.NewServeMux()
+	mux.HandleFunc("/users/me", func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"user":{"userId":"uid-123","currentDevice":{"id":"dev-1"}}}`))
+	})
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		gotMethod = r.Method
+		gotPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"isAway":true}`))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	old := appAPIBaseURL
+	appAPIBaseURL = srv.URL
+	defer func() { appAPIBaseURL = old }()
+
+	c := New("e", "p", "uid-123", "", "")
+	c.BaseURL = srv.URL
+	c.token = "t"
+	c.tokenExp = time.Now().Add(time.Hour)
+	c.HTTP = srv.Client()
+
+	away, err := c.GetAwayMode(context.Background(), "")
+	if err != nil {
+		t.Fatalf("GetAwayMode: %v", err)
+	}
+	if gotMethod != http.MethodGet {
+		t.Errorf("method = %q, want GET", gotMethod)
+	}
+	if gotPath != "/users/uid-123/away-mode" {
+		t.Errorf("path = %q, want /users/uid-123/away-mode", gotPath)
+	}
+	if !away {
+		t.Error("away = false, want true")
+	}
+}
+
+func TestGetAwayModeExplicitUser(t *testing.T) {
+	var gotPath string
+	mux := http.NewServeMux()
+	mux.HandleFunc("/", func(w http.ResponseWriter, r *http.Request) {
+		gotPath = r.URL.Path
+		w.Header().Set("Content-Type", "application/json")
+		w.Write([]byte(`{"isAway":false}`))
+	})
+	srv := httptest.NewServer(mux)
+	defer srv.Close()
+
+	old := appAPIBaseURL
+	appAPIBaseURL = srv.URL
+	defer func() { appAPIBaseURL = old }()
+
+	c := New("e", "p", "uid-123", "", "")
+	c.BaseURL = srv.URL
+	c.token = "t"
+	c.tokenExp = time.Now().Add(time.Hour)
+	c.HTTP = srv.Client()
+
+	away, err := c.GetAwayMode(context.Background(), "other-uid")
+	if err != nil {
+		t.Fatalf("GetAwayMode: %v", err)
+	}
+	if gotPath != "/users/other-uid/away-mode" {
+		t.Errorf("path = %q, want /users/other-uid/away-mode", gotPath)
+	}
+	if away {
+		t.Error("away = true, want false")
+	}
+}

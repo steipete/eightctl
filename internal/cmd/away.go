@@ -8,12 +8,13 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/steipete/eightctl/internal/client"
+	"github.com/steipete/eightctl/internal/output"
 )
 
 var awayCmd = &cobra.Command{
 	Use:   "away",
 	Short: "Away mode (vacation)",
-	Long:  "Activate or deactivate away mode. When away, the pod stops heating/cooling.\nTarget a specific side with --side left|right|solo, a specific user with\n--target-user-id, or apply to every household member with --both.\nWith no flags, defaults to the authenticated user's side.",
+	Long:  "Activate or deactivate away mode. When away, the pod stops heating/cooling.\nTarget a specific side with --side left|right|solo, a specific user with\n--target-user-id, or apply to every household member with --both.\nWith no flags, defaults to the authenticated user's side.\nUse 'away status' to read the current state.",
 }
 
 var awayOnCmd = &cobra.Command{
@@ -26,6 +27,57 @@ var awayOffCmd = &cobra.Command{
 	Use:   "off",
 	Short: "Deactivate away mode",
 	RunE:  func(cmd *cobra.Command, args []string) error { return runAway(cmd, false) },
+}
+
+var awayStatusCmd = &cobra.Command{
+	Use:   "status",
+	Short: "Show whether away mode is active",
+	Long: "Report away mode for each household side. Narrow to one person with\n" +
+		"--side left|right|solo or --target-user-id.",
+	RunE: func(cmd *cobra.Command, args []string) error {
+		if err := requireAuthFields(); err != nil {
+			return err
+		}
+		cl := client.New(viper.GetString("email"), viper.GetString("password"), viper.GetString("user_id"), viper.GetString("client_id"), viper.GetString("client_secret"))
+		ctx := context.Background()
+
+		target, err := resolveSelectedTarget(ctx, cmd, cl)
+		if err != nil {
+			return err
+		}
+
+		var targets []client.HouseholdUserTarget
+		if target != nil {
+			targets = []client.HouseholdUserTarget{*target}
+		} else {
+			targets, err = cl.HouseholdUserTargets(ctx)
+			if err != nil {
+				return err
+			}
+		}
+
+		rows := make([]map[string]any, 0, len(targets))
+		for _, current := range targets {
+			away, err := cl.GetAwayMode(ctx, current.UserID)
+			if err != nil {
+				return fmt.Errorf("reading away for %s: %w", current.UserID, err)
+			}
+			rows = append(rows, map[string]any{
+				"side":    current.SideLabel(),
+				"name":    current.DisplayName(),
+				"user_id": current.UserID,
+				"away":    away,
+			})
+		}
+
+		headers := []string{"side", "name", "user_id", "away"}
+		fields := viper.GetStringSlice("fields")
+		rows = output.FilterFields(rows, fields)
+		if len(fields) > 0 {
+			headers = fields
+		}
+		return output.Print(output.Format(viper.GetString("output")), headers, rows)
+	},
 }
 
 func runAway(cmd *cobra.Command, on bool) error {
@@ -103,6 +155,8 @@ func init() {
 	awayCmd.PersistentFlags().Bool("both", false, "Apply to every household member")
 	addTargetingFlags(awayOnCmd, true)
 	addTargetingFlags(awayOffCmd, true)
+	addTargetingFlags(awayStatusCmd, true)
 	awayCmd.AddCommand(awayOnCmd)
 	awayCmd.AddCommand(awayOffCmd)
+	awayCmd.AddCommand(awayStatusCmd)
 }
