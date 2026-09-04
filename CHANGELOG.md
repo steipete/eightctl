@@ -7,6 +7,7 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 ## Unreleased
 
 - Prefer Go 1.26.8 while retaining Go 1.26.7 support; update Charm Log to 2.0.1 for full severity labels, go-runewidth to 0.0.29 for width fixes, and pnpm to 11.25.0.
+- Fixed `away off --both` reporting success without clearing away mode when all household members are away; fail explicitly when household user IDs cannot be resolved. Thanks @omarshahine.
 - Fixed daemon schedules being missed when the configured timezone and host timezone fall on different dates.
 - Updated to Charm Log v2 for terminal-aware log colors, the maintained YAML v3 parser, and Go 1.26.7 for the latest HTTP fixes.
 
