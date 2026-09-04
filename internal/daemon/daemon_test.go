@@ -83,6 +83,47 @@ func TestRunnerProcessExecutesDueItemsOnce(t *testing.T) {
 	}
 }
 
+func TestRunnerProcessUsesScheduleDate(t *testing.T) {
+	pacific := time.FixedZone("PDT", -7*60*60)
+	for _, tt := range []struct {
+		name string
+		now  time.Time
+		zone *time.Location
+		at   string
+		key  string
+	}{
+		{
+			name: "schedule date ahead of host",
+			now:  time.Date(2026, 8, 30, 23, 5, 12, 0, pacific),
+			zone: time.UTC,
+			at:   "06:05",
+			key:  "2026-08-31 06:05temp",
+		},
+		{
+			name: "schedule date behind host",
+			now:  time.Date(2026, 8, 31, 6, 5, 12, 0, time.UTC),
+			zone: pacific,
+			at:   "23:05",
+			key:  "2026-08-30 23:05temp",
+		},
+	} {
+		t.Run(tt.name, func(t *testing.T) {
+			r := Runner{
+				Items:    []ScheduleItem{{Time: tt.at, Action: "temp", Temperature: "-20"}},
+				Timezone: tt.zone,
+				DryRun:   true,
+			}
+			executed := map[string]bool{}
+			if err := r.process(tt.now, executed); err != nil {
+				t.Fatal(err)
+			}
+			if !executed[tt.key] {
+				t.Fatalf("due schedule was missed: executed = %v, want %s", executed, tt.key)
+			}
+		})
+	}
+}
+
 func useTempKeyring(t *testing.T) {
 	t.Helper()
 	tmp := t.TempDir()

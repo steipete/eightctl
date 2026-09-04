@@ -1,0 +1,80 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+work=$(mktemp -d "${TMPDIR:-/tmp}/eightctl-preflight-test.XXXXXX")
+trap 'rm -rf "$work"' EXIT
+mkdir -p "$work/bin" "$work/assets"
+export PREFLIGHT_FIXTURE="$work"
+export PREFLIGHT_VERSION
+PREFLIGHT_VERSION=$(node -p 'require("./package.json").version')
+./scripts/release-notes "v$PREFLIGHT_VERSION" > "$work/assets/RELEASE-NOTES.md"
+
+node <<'NODE'
+const fs = require('node:fs');
+const crypto = require('node:crypto');
+const root = process.env.PREFLIGHT_FIXTURE;
+const version = process.env.PREFLIGHT_VERSION;
+const digest = bytes => crypto.createHash('sha256').update(bytes).digest('hex');
+const notes = fs.readFileSync(`${root}/assets/RELEASE-NOTES.md`);
+const inventory = Buffer.from(JSON.stringify({
+  schemaVersion: 1, repository: 'test/eightctl', tag: `v${version}`, commit: 'fixture-commit',
+  payloads: [{name: 'RELEASE-NOTES.md', size: notes.length, sha256: digest(notes)}],
+}));
+const checksums = Buffer.from(
+  `${digest(notes)}  RELEASE-NOTES.md\n${digest(inventory)}  ASSET-INVENTORY.json\n`);
+fs.writeFileSync(`${root}/assets/ASSET-INVENTORY.json`, inventory);
+fs.writeFileSync(`${root}/assets/SHA256SUMS`, checksums);
+const assets = Object.entries({
+  'RELEASE-NOTES.md': notes, 'ASSET-INVENTORY.json': inventory, SHA256SUMS: checksums,
+}).map(([name, bytes]) => ({name, size: bytes.length, digest: `sha256:${digest(bytes)}`}));
+fs.writeFileSync(`${root}/release.json`, JSON.stringify({
+  draft: false, prerelease: false, published_at: '2026-08-30T00:00:00Z',
+  tag_name: `v${version}`, body: notes.toString(), assets,
+}));
+NODE
+
+cat > "$work/bin/gh" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+if [[ $1 == api ]]; then
+  echo 'fixture: harmless gh diagnostic' >&2
+  case "$PREFLIGHT_CASE" in
+    published) cat "$PREFLIGHT_FIXTURE/release.json" ;;
+    missing) echo 'gh: Not Found (HTTP 404)' >&2; exit 1 ;;
+    denied) echo 'gh: Forbidden (HTTP 403)' >&2; exit 1 ;;
+  esac
+else
+  [[ $1 == release && $2 == download ]]
+  while [[ $1 != --dir ]]; do shift; done
+  mkdir -p "$2"
+  cp "$PREFLIGHT_FIXTURE"/assets/* "$2/"
+fi
+SH
+cat > "$work/bin/git" <<'SH'
+#!/usr/bin/env bash
+set -euo pipefail
+case "$1" in
+  cat-file) echo tag ;;
+  rev-parse) echo fixture-commit ;;
+  show) printf '{"version":"%s"}\n' "$PREFLIGHT_VERSION" ;;
+  *) exit 1 ;;
+esac
+SH
+chmod +x "$work/bin/gh" "$work/bin/git"
+
+run_case() {
+  PATH="$work/bin:$PATH" PREFLIGHT_CASE="$1" GITHUB_OUTPUT="$work/github-output" \
+    ./scripts/release-preflight "$PREFLIGHT_VERSION" test/eightctl > "$work/out" 2> "$work/err"
+}
+run_case published
+grep -q '^already-published=true$' "$work/out"
+grep -q '^fixture: harmless gh diagnostic$' "$work/err"
+grep -q '^already-published=true$' "$work/github-output"
+run_case missing
+grep -q '^already-published=false$' "$work/out"
+if run_case denied; then
+  echo 'preflight accepted a denied API request' >&2
+  exit 1
+fi
+grep -q 'HTTP 403' "$work/err"
+echo 'release preflight: published JSON with stderr, missing release, denied API: PASS'

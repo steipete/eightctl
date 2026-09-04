@@ -47,10 +47,8 @@ func TestDeviceSidesEmptyWhenEveryoneAway(t *testing.T) {
 	}
 }
 
-// HouseholdUserTargets stays correct for the same payload, because it asks the
-// device endpoint for the fields explicitly and falls back to the per-user
-// records. Callers that need every household member must use it rather than
-// Device().Sides().
+// Explicitly requesting side fields recovers IDs omitted by the unfiltered
+// device response. User records then supply each target's details.
 func TestHouseholdUserTargetsSurvivesEveryoneAway(t *testing.T) {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/users/me", func(w http.ResponseWriter, r *http.Request) {
@@ -59,6 +57,10 @@ func TestHouseholdUserTargetsSurvivesEveryoneAway(t *testing.T) {
 	})
 	mux.HandleFunc("/devices/dev-1", func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+		if r.URL.Query().Get("filter") != "leftUserId,rightUserId,awaySides" {
+			w.Write([]byte(`{"result":{"deviceId":"dev-1"}}`))
+			return
+		}
 		w.Write([]byte(`{"result":{"leftUserId":"uid-a","rightUserId":"uid-b",
 			"awaySides":{"leftUserId":"uid-a","rightUserId":"uid-b"}}}`))
 	})
@@ -86,5 +88,8 @@ func TestHouseholdUserTargetsSurvivesEveryoneAway(t *testing.T) {
 	}
 	if len(targets) != 2 {
 		t.Fatalf("expected 2 household users, got %d (%+v)", len(targets), targets)
+	}
+	if targets[0].UserID != "uid-a" || targets[0].Side != "left" || targets[1].UserID != "uid-b" || targets[1].Side != "right" {
+		t.Fatalf("unexpected household targets: %+v", targets)
 	}
 }

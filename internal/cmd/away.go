@@ -33,7 +33,10 @@ func runAway(cmd *cobra.Command, on bool) error {
 		return err
 	}
 	cl := client.New(viper.GetString("email"), viper.GetString("password"), viper.GetString("user_id"), viper.GetString("client_id"), viper.GetString("client_secret"))
-	ctx := context.Background()
+	return runAwayWithClient(context.Background(), cmd, cl, on)
+}
+
+func runAwayWithClient(ctx context.Context, cmd *cobra.Command, cl *client.Client, on bool) error {
 	both, _ := cmd.Flags().GetBool("both")
 
 	target, err := resolveSelectedTarget(ctx, cmd, cl)
@@ -52,11 +55,8 @@ func runAway(cmd *cobra.Command, on bool) error {
 		if target != nil {
 			return fmt.Errorf("--both conflicts with --side/--target-user-id")
 		}
-		// Deliberately NOT Device().Sides(): when every household member is
-		// already away, the device payload omits leftUserId/rightUserId, so
-		// Sides() returns empty strings. The old loop skipped both and made
-		// zero requests while still reporting success, which meant
-		// `away off --both` could never bring an all-away household home.
+		// The unfiltered device response can omit every user while away.
+		// Household lookup explicitly requests the IDs needed for the writes.
 		targets, err := cl.HouseholdUserTargets(ctx)
 		if err != nil {
 			return fmt.Errorf("fetching household users: %w", err)
@@ -66,13 +66,18 @@ func runAway(cmd *cobra.Command, on bool) error {
 		}
 		for _, current := range targets {
 			if current.UserID == "" {
-				continue
+				return fmt.Errorf("household user is missing a user ID")
 			}
+		}
+		for _, current := range targets {
 			if err := cl.SetAwayMode(ctx, current.UserID, on); err != nil {
 				return fmt.Errorf("setting away for %s: %w", current.UserID, err)
 			}
 		}
 		scope = fmt.Sprintf("%d household members", len(targets))
+		if len(targets) == 1 {
+			scope = "1 household member"
+		}
 	case target != nil:
 		if err := cl.SetAwayMode(ctx, target.UserID, on); err != nil {
 			return fmt.Errorf("setting away for %s: %w", target.UserID, err)

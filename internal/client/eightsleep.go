@@ -12,7 +12,7 @@ import (
 	"net/url"
 	"time"
 
-	"github.com/charmbracelet/log"
+	"charm.land/log/v2"
 	"github.com/steipete/eightctl/internal/tokencache"
 )
 
