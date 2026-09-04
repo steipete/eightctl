@@ -36,6 +36,11 @@ jobs:
       - name: Test
         run: go test ./...
 
+      - name: Test minimum supported Go version
+        env:
+          GOTOOLCHAIN: go1.26.7
+        run: go test ./...
+
       - name: Release metadata consistency
         run: ./scripts/check-release-metadata
 
