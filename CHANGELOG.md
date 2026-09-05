@@ -8,8 +8,9 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 
 ### Highlights
 
-Household-wide away recovery and timezone-correct daemon schedules make travel automation more reliable.
+Away-state readback, reliable household targeting and recovery, and timezone-correct daemon schedules make travel automation easier to check.
 
+- Fixed left/right targeting when one household member is away, and added `away status` to read the cloud-reported state for the household or a selected side/user. Thanks @omarshahine.
 - Fixed `away off --both` reporting success without clearing away mode when all household members are away; fail explicitly when household user IDs cannot be resolved. Thanks @omarshahine.
 - Fixed daemon schedules being missed when the configured timezone and host timezone fall on different dates.
 - Updated to Charm Log 2.0.1 for terminal-aware colors and complete severity labels, go-runewidth 0.0.29 for width fixes, and the maintained YAML v3 parser.

@@ -55,6 +55,8 @@ Run `eightctl <command> --help` for flags and subcommands. The [command specific
 
 Use `eightctl away on --both` before a trip and `eightctl away off --both` to resume all household members, including when everyone is already away. If household user IDs cannot be resolved, the command reports an error.
 
+`eightctl away status` reads the cloud-reported state for all discovered household sides; use `--side` or `--target-user-id` to select one person. In contrast, `away on|off` without targeting flags changes only the authenticated user's side. The cloud is eventually consistent: readback may show the previous state after a write and does not immediately confirm that a change took effect.
+
 ## Configuration
 
 Flags take precedence over `EIGHTCTL_*` environment variables, which take precedence over `~/.config/eightctl/config.yaml`:

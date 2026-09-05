@@ -395,13 +395,16 @@ func (c *Client) GetAwayMode(ctx context.Context, userID string) (bool, error) {
 		userID = c.UserID
 	}
 	var res struct {
-		IsAway bool `json:"isAway"`
+		IsAway *bool `json:"isAway"`
 	}
 	u := fmt.Sprintf("%s/users/%s/away-mode", appAPIBaseURL, userID)
 	if err := c.doURL(ctx, http.MethodGet, u, nil, &res); err != nil {
 		return false, err
 	}
-	return res.IsAway, nil
+	if res.IsAway == nil {
+		return false, fmt.Errorf("away mode response is missing isAway")
+	}
+	return *res.IsAway, nil
 }
 
 // TempStatus represents current temperature state payload.

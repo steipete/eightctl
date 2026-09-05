@@ -505,3 +505,22 @@ func TestGetAwayModeExplicitUser(t *testing.T) {
 		t.Error("away = true, want false")
 	}
 }
+
+func TestGetAwayModeInvalidResponse(t *testing.T) {
+	for _, body := range []string{`{}`, `{"isAway":null}`, `{"isAway":"false"}`} {
+		t.Run(body, func(t *testing.T) {
+			srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Write([]byte(body))
+			}))
+			defer srv.Close()
+			old := appAPIBaseURL
+			appAPIBaseURL = srv.URL
+			defer func() { appAPIBaseURL = old }()
+			c := New("e", "p", "uid-123", "", "")
+			c.token, c.tokenExp = "t", time.Now().Add(time.Hour)
+			if _, err := c.GetAwayMode(context.Background(), "uid-123"); err == nil {
+				t.Fatal("expected an error for missing or malformed away state")
+			}
+		})
+	}
+}

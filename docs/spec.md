@@ -20,7 +20,7 @@ Eight Sleep Pod power/control + data-export CLI, written in Go. Targets macOS/Li
 Core: `on`, `off`, `temp <level>`, `status`, `whoami`, `logout`, `version`.
 
 Away mode:
-- `away on|off`
+- `away on|off|status`
 
 Schedules & daemon:
 - `schedule list` (Autopilot smart schedule)
@@ -74,7 +74,9 @@ Audio/temperature data helpers:
 - Logs via charmbracelet/log; `--verbose` for debug; `--quiet` hides config notice.
 - `status` should prefer discovered household targets when available and display `left` / `right` or inferred `solo`.
 - `on`, `off`, and `temp` should default to all discovered household targets unless narrowed with `--side` or `--target-user-id`.
-- `away` should default to the authenticated user's side, accept `--side` or `--target-user-id`, and use `--both` for the household.
+- `away on|off` default to the authenticated user's side, accept `--side` or `--target-user-id`, and use `--both` for the household.
+- `away status` reads all discovered household sides by default, or a selected `--side` / `--target-user-id`; table, JSON, CSV, and `--fields` work as with `status`. `--both` explicitly selects the household and conflicts with a single-target flag.
+- Away readback reports the cloud's state. The cloud is eventually consistent, so status may show the previous state after a write and does not immediately confirm that a change took effect.
 - `temp` accepts negative positional levels such as `temp -40` without requiring `--`.
 
 ## Daemon Behavior
