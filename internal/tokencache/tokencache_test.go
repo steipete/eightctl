@@ -4,6 +4,7 @@ import (
 	"errors"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 	"time"
 
@@ -312,5 +313,188 @@ func TestIgnorableLegacyKeyError(t *testing.T) {
 	}
 	if isIgnorableLegacyKeyError(errors.New("boom")) {
 		t.Fatalf("generic error should not be ignorable")
+	}
+}
+
+// A pinned file backend must not narrow what logout revokes. An earlier
+// revision implemented the pin by aliasing openKeyring to openFileKeyring, so
+// Clear() removed the file entry twice and left the primary entry intact --
+// logout reported success while a usable session survived in the OS keyring,
+// and it came back as soon as the pin was removed.
+func TestClearRevokesPrimaryWhenFileBackendPinned(t *testing.T) {
+	primary := keyring.NewArrayKeyring(nil)
+	file := keyring.NewArrayKeyring(nil)
+
+	restorePrimary := SetOpenKeyringForTest(func() (keyring.Keyring, error) { return primary, nil })
+	defer restorePrimary()
+	restoreFile := SetOpenFileKeyringForTest(func() (keyring.Keyring, error) { return file, nil })
+	defer restoreFile()
+
+	prevPin := pinFileBackend
+	defer func() { pinFileBackend = prevPin }()
+	pinFileBackend = false
+
+	id := Identity{BaseURL: "https://example.test/v1", ClientID: "cid", Email: "user@example.test"}
+	if err := Save(id, "primary-token", time.Now().Add(time.Hour), "uid"); err != nil {
+		t.Fatalf("seeding primary backend: %v", err)
+	}
+	if _, err := Load(id); err != nil {
+		t.Fatalf("primary token should load before logout: %v", err)
+	}
+
+	// Pin to file, as `keyring_backend: file` does, then log out.
+	pinFileBackend = true
+	if err := Clear(id); err != nil {
+		t.Fatalf("Clear returned an error: %v", err)
+	}
+
+	// Unpin: the primary entry must be gone, not merely unreachable.
+	pinFileBackend = false
+	if cached, err := Load(id); err == nil {
+		t.Fatalf("logout left a usable session in the primary backend: %+v", cached)
+	}
+}
+
+// refusingKeyring opens fine but will not delete anything, standing in for a
+// backend that is present and rejects removal (a locked or policy-restricted
+// OS keyring).
+type refusingKeyring struct {
+	keyring.Keyring
+	err error
+}
+
+func (r refusingKeyring) Remove(string) error { return r.err }
+
+// A backend that refuses removal may still hold a usable session, so logout has
+// to fail loudly even though the other backend was cleared. Reporting success
+// would tell the operator the token was revoked while a later unpinned run can
+// still load it and send it as a bearer credential.
+func TestClearReportsRefusedRemoval(t *testing.T) {
+	backing := keyring.NewArrayKeyring(nil)
+	refusalErr := errors.New("keyring refused removal")
+	primary := refusingKeyring{Keyring: backing, err: refusalErr}
+	file := keyring.NewArrayKeyring(nil)
+
+	defer SetOpenKeyringForTest(func() (keyring.Keyring, error) { return primary, nil })()
+	defer SetOpenFileKeyringForTest(func() (keyring.Keyring, error) { return file, nil })()
+	defer SetFileBackendPinForTest(false)()
+
+	id := Identity{BaseURL: "https://example.test/v1", ClientID: "cid", Email: "user@example.test"}
+	if err := Save(id, "surviving-token", time.Now().Add(time.Hour), "uid"); err != nil {
+		t.Fatalf("seeding primary backend: %v", err)
+	}
+
+	SetFileBackendPinForTest(true)
+	err := Clear(id)
+	SetFileBackendPinForTest(false)
+
+	if err == nil {
+		t.Fatal("Clear reported success while the primary backend refused removal")
+	}
+	if !errors.Is(err, refusalErr) {
+		t.Fatalf("Clear should surface the refusal, got %v", err)
+	}
+	// Not vacuous: the token really did survive, which is why the error matters.
+	if _, loadErr := Load(id); loadErr != nil {
+		t.Fatalf("expected the refused token to still be loadable, got %v", loadErr)
+	}
+}
+
+// A backend that cannot be opened is not evidence a token survived there, so it
+// must not turn a successful logout into a failure.
+func TestClearToleratesUnopenableBackend(t *testing.T) {
+	file := keyring.NewArrayKeyring(nil)
+	defer SetOpenKeyringForTest(func() (keyring.Keyring, error) {
+		return nil, errors.New("no OS keyring on this host")
+	})()
+	defer SetOpenFileKeyringForTest(func() (keyring.Keyring, error) { return file, nil })()
+	defer SetFileBackendPinForTest(true)()
+
+	id := Identity{BaseURL: "https://example.test/v1", ClientID: "cid", Email: "user@example.test"}
+	if err := Save(id, "file-token", time.Now().Add(time.Hour), "uid"); err != nil {
+		t.Fatalf("seeding file backend: %v", err)
+	}
+	if err := Clear(id); err != nil {
+		t.Fatalf("an unopenable backend should not fail logout, got %v", err)
+	}
+	if cached, err := Load(id); err == nil {
+		t.Fatalf("logout left a usable session: %+v", cached)
+	}
+}
+
+// Neither backend reachable means nothing was revoked anywhere; logout must say so.
+func TestClearFailsWhenNoBackendOpens(t *testing.T) {
+	defer SetOpenKeyringForTest(func() (keyring.Keyring, error) {
+		return nil, errors.New("primary unavailable")
+	})()
+	defer SetOpenFileKeyringForTest(func() (keyring.Keyring, error) {
+		return nil, errors.New("file unavailable")
+	})()
+	defer SetFileBackendPinForTest(false)()
+
+	id := Identity{BaseURL: "https://example.test/v1", ClientID: "cid", Email: "user@example.test"}
+	if err := Clear(id); err == nil {
+		t.Fatal("Clear reported success with no reachable backend")
+	}
+}
+
+// realFileKeyring opens the production file backend rooted in a temp dir, and
+// returns the directory holding the stored items.
+func realFileKeyring(t *testing.T) (func() (keyring.Keyring, error), string) {
+	t.Helper()
+	dir := filepath.Join(t.TempDir(), "keyring")
+	opener := func() (keyring.Keyring, error) {
+		return keyring.Open(keyring.Config{
+			ServiceName:      serviceName + "-test",
+			AllowedBackends:  []keyring.BackendType{keyring.FileBackend},
+			FileDir:          dir,
+			FilePasswordFunc: filePassword,
+		})
+	}
+	return opener, dir
+}
+
+// The file-backed stale-token case: a token that is still readable but whose
+// deletion is denied must not produce a successful logout. os.Remove returns
+// *os.PathError for permission denied, and the inherited legacy-key filter
+// ignored every *os.PathError, so logout reported success while the token
+// stayed on disk and loadable.
+func TestClearReportsPermissionDeniedFileRemoval(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		t.Skip("directory permissions do not block unlink the same way on Windows")
+	}
+	if os.Geteuid() == 0 {
+		t.Skip("running as root bypasses the directory permissions this test relies on")
+	}
+
+	fileOpener, dir := realFileKeyring(t)
+	defer SetOpenKeyringForTest(func() (keyring.Keyring, error) {
+		return nil, errors.New("no OS keyring on this host")
+	})()
+	defer SetOpenFileKeyringForTest(fileOpener)()
+	defer SetFileBackendPinForTest(true)()
+
+	id := Identity{BaseURL: "https://example.test/v1", ClientID: "cid", Email: "user@example.test"}
+	if err := Save(id, "denied-token", time.Now().Add(time.Hour), "uid"); err != nil {
+		t.Fatalf("seeding file backend: %v", err)
+	}
+
+	// Deny unlink while leaving the item readable.
+	if err := os.Chmod(dir, 0o500); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	t.Cleanup(func() { _ = os.Chmod(dir, 0o700) })
+
+	err := Clear(id)
+
+	// Non-vacuous: the token really did survive the failed logout.
+	if cached, loadErr := Load(id); loadErr != nil {
+		t.Fatalf("test is vacuous, the token did not survive: %v", loadErr)
+	} else if cached.Token != "denied-token" {
+		t.Fatalf("unexpected surviving token %q", cached.Token)
+	}
+
+	if err == nil {
+		t.Fatal("logout reported success while a readable token survived a denied deletion")
 	}
 }

@@ -105,6 +105,11 @@ func initConfig() {
 	viper.SetDefault("output", cfg.Output)
 	viper.SetDefault("fields", cfg.Fields)
 	viper.SetDefault("verbose", cfg.Verbose)
+	viper.SetDefault("keyring_backend", cfg.KeyringBackend)
+
+	if strings.EqualFold(strings.TrimSpace(viper.GetString("keyring_backend")), "file") {
+		tokencache.UseFileBackend()
+	}
 
 	if err := config.WarnInsecurePerms(viper.ConfigFileUsed()); err != nil {
 		logger.Warn(err.Error())

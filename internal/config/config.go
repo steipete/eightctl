@@ -20,6 +20,10 @@ type Config struct {
 	Output       string   `mapstructure:"output"`
 	Fields       []string `mapstructure:"fields"`
 	Verbose      bool     `mapstructure:"verbose"`
+	// KeyringBackend selects where the cached auth token lives. "file" pins the
+	// file backend and never touches the OS keyring; empty keeps the default
+	// (OS keyring first, file as fallback). Env: EIGHTCTL_KEYRING_BACKEND.
+	KeyringBackend string `mapstructure:"keyring_backend"`
 }
 
 // Load configures v, reads the selected file, and unmarshals Config.
