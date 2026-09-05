@@ -46,12 +46,9 @@ jobs:
     with:
       version: ${{ inputs.version }}
       repository-type: personal
-      homebrew-tap: steipete/homebrew-tap
-      homebrew-formula: eightctl
     secrets:
       MACOS_SIGNING_P12: ${{ secrets.MACOS_SIGN_P12 }}
       MACOS_SIGNING_P12_PASSWORD: ${{ secrets.MACOS_SIGN_P12_PASSWORD }}
       ASC_KEY_ID: ${{ secrets.ASC_KEY_ID }}
       ASC_ISSUER_ID: ${{ secrets.ASC_ISSUER_ID }}
       ASC_PRIVATE_KEY_P8: ${{ secrets.ASC_PRIVATE_KEY }}
-      TAP_TOKEN: ${{ secrets.HOMEBREW_TAP_TOKEN }}
