@@ -383,6 +383,41 @@ func (c *Client) SetAwayMode(ctx context.Context, userID string, away bool) erro
 	return c.doURL(ctx, http.MethodPut, u, payload, nil)
 }
 
+// AwayModeStatus is the away-mode state for one household user.
+type AwayModeStatus struct {
+	IsAway *bool `json:"isAway"`
+}
+
+// GetAwayMode reports whether away mode is active for a specific user ID.
+// Like SetAwayMode this lives on the app API, not the client API.
+// If userID is empty, it defaults to the authenticated user.
+//
+// There is no way to derive this from the device payload: with one person
+// away Eight Sleep can duplicate the present user's ID into both top-level
+// side fields, so side assignment says nothing about away state. The
+// temperature schedule is likewise unaffected by away, which makes `status`
+// look identical either way.
+func (c *Client) GetAwayMode(ctx context.Context, userID string) (bool, error) {
+	if userID == "" {
+		if err := c.requireUser(ctx); err != nil {
+			return false, err
+		}
+		userID = c.UserID
+	}
+	u := fmt.Sprintf("%s/users/%s/away-mode", appAPIBaseURL, userID)
+	var res AwayModeStatus
+	if err := c.doURL(ctx, http.MethodGet, u, nil, &res); err != nil {
+		return false, err
+	}
+	// Treat a missing field as an error rather than defaulting to "home":
+	// silently reporting not-away for an unreadable response is the failure
+	// mode that makes an away check worse than having none.
+	if res.IsAway == nil {
+		return false, fmt.Errorf("away-mode response for %s contained no isAway state", userID)
+	}
+	return *res.IsAway, nil
+}
+
 // TempStatus represents current temperature state payload.
 type TempStatus struct {
 	CurrentLevel int `json:"currentLevel"`
