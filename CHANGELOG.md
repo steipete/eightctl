@@ -4,7 +4,7 @@ All notable changes to this project are documented here.
 
 The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier project history from git.
 
-## Unreleased
+## 0.2.4 - 2026-09-05
 
 ### Highlights
 
@@ -13,6 +13,8 @@ Away-state readback, reliable household targeting and recovery, and timezone-cor
 - Fixed left/right targeting when one household member is away, and added `away status` to read the cloud-reported state for the household or a selected side/user. Thanks @omarshahine.
 - Fixed `away off --both` reporting success without clearing away mode when all household members are away; fail explicitly when household user IDs cannot be resolved. Thanks @omarshahine.
 - Fixed daemon schedules being missed when the configured timezone and host timezone fall on different dates.
+- Fixed source installs reporting an outdated development version and added `--version` alongside `version`.
+- Enabled the verified Homebrew handoff so the tap follows signed releases.
 - Updated to Charm Log 2.0.1 for terminal-aware colors and complete severity labels, go-runewidth 0.0.29 for width fixes, and the maintained YAML v3 parser.
 - Raised the minimum Go version to 1.26.7 for HTTP fixes and prefer Go 1.26.8; updated the optional development scripts to pnpm 12.3.4 while retaining Node.js 24 support.
 

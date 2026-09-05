@@ -16,8 +16,9 @@ import (
 
 var (
 	rootCmd = &cobra.Command{
-		Use:   "eightctl",
-		Short: "Control your Eight Sleep Pod from the terminal",
+		Use:     "eightctl",
+		Short:   "Control your Eight Sleep Pod from the terminal",
+		Version: Version,
 	}
 	logger = log.New(os.Stderr)
 )
@@ -31,6 +32,7 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+	rootCmd.SetVersionTemplate("{{.Version}}\n")
 
 	rootCmd.PersistentFlags().String("config", "", "config file (default ~/.config/eightctl/config.yaml)")
 	rootCmd.PersistentFlags().BoolP("verbose", "v", false, "verbose logging")

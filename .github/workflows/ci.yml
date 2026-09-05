@@ -82,3 +82,4 @@ jobs:
           EXPECTED=$(jq -r '.version' dist/metadata.json)
           ACTUAL=$("$BINARY" version)
           test "$ACTUAL" = "$EXPECTED"
+          test "$("$BINARY" --version)" = "$EXPECTED"
