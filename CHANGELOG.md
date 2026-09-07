@@ -6,6 +6,13 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 
 ## Unreleased
 
+### Highlights
+
+Local source builds gain a portable install helper with macOS signature verification.
+
+- Added `make build` and `make install`, with a configurable destination, directory creation, and macOS signing and verification after replacement. Thanks @omarshahine.
+- Updated repository-owned GoReleaser tooling to 2.18.1 for archive-path fixes, dependency security updates, and temporary-directory cleanup improvements.
+
 ## 0.2.4 - 2026-09-05
 
 ### Highlights
