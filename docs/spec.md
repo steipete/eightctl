@@ -19,6 +19,8 @@ Eight Sleep Pod power/control + data-export CLI, written in Go. Targets macOS/Li
 ## CLI Surface (implemented)
 Core: `on`, `off`, `temp <level>`, `status`, `whoami`, `logout`, `version`.
 
+`logout` removes the selected identity's local cached token from reachable stores; it does not revoke tokens at the service. Deletion failures from a reachable store produce a nonzero exit status, including after partial cleanup. An unavailable backend is tolerated if another opens; if neither opens, logout fails.
+
 Away mode:
 - `away on|off|status`
 

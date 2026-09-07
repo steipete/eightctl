@@ -4,9 +4,12 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"syscall"
 	"time"
 
 	"charm.land/log/v2"
@@ -185,29 +188,50 @@ func loadFrom(opener func() (keyring.Keyring, error), id Identity) (*CachedToken
 	return &cached, nil
 }
 
+// Clear removes the identity's local token cache from reachable backends.
+// An unavailable backend is tolerated if another opens, but removal failures
+// from an opened backend are returned. This does not revoke tokens at the service.
 func Clear(id Identity) error {
-	primaryErr := clearFrom(openKeyring, id)
-	fallbackErr := clearFrom(openFileKeyring, id)
-	if primaryErr != nil && fallbackErr != nil {
+	primaryOpened, primaryErr := clearFrom(openKeyring, id)
+	fileOpened, fileErr := clearFrom(openFileKeyring, id)
+
+	if primaryOpened && primaryErr != nil {
+		return primaryErr
+	}
+	if fileOpened && fileErr != nil {
+		return fileErr
+	}
+	if !primaryOpened && !fileOpened {
 		return primaryErr
 	}
 	return nil
 }
 
-func clearFrom(opener func() (keyring.Keyring, error), id Identity) error {
+// clearFrom distinguishes an unavailable backend from an incomplete removal.
+func clearFrom(opener func() (keyring.Keyring, error), id Identity) (opened bool, err error) {
 	ring, err := opener()
 	if err != nil {
-		return err
+		return false, err
 	}
-	for _, key := range []string{storageKey(id), cacheKey(id)} {
+	for i, key := range []string{storageKey(id), cacheKey(id)} {
 		if err := ring.Remove(key); err != nil {
-			if err == keyring.ErrKeyNotFound || os.IsNotExist(err) || isIgnorableLegacyKeyError(err) {
+			if isAbsentOrUnnameable(err, i == 1) {
 				continue
 			}
-			return err
+			return true, err
 		}
 	}
-	return nil
+	return true, nil
+}
+
+func isAbsentOrUnnameable(err error, legacy bool) bool {
+	if errors.Is(err, keyring.ErrKeyNotFound) || errors.Is(err, fs.ErrNotExist) {
+		return true
+	}
+	// Only legacy keys can contain Windows-invalid filename characters. Other
+	// PathErrors (permissions, read-only mounts, I/O failures) may leave a token.
+	const windowsInvalidName syscall.Errno = 123
+	return legacy && runtime.GOOS == "windows" && errors.Is(err, windowsInvalidName)
 }
 
 func cacheKey(id Identity) string {

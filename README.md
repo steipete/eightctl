@@ -98,6 +98,8 @@ eightctl status --fields side,name,mode,level
 
 `eightctl` authenticates against Eight Sleep's OAuth service and caches tokens in the operating system keyring, with a file-backed fallback. Reusing cached tokens reduces login traffic, but the provider can still return rate-limit errors.
 
+`eightctl logout` removes the selected account's local cached token from reachable stores. It returns an error if a reachable store refuses deletion, even when another store clears successfully. An unavailable store remains tolerated if another opens. Logout does not revoke tokens at Eight Sleep; an already-issued token remains valid at the service until it expires.
+
 The API is undocumented and cloud-only. The [project specification](docs/spec.md#reality-of-the-api) records the current contract, while [CHANGELOG.md](CHANGELOG.md) tracks endpoint removals and compatibility changes.
 
 ## Development
