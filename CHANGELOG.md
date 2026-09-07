@@ -8,9 +8,11 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 
 ### Highlights
 
-Local source builds gain a portable install helper with macOS signature verification.
+Logout now reports incomplete token-cache cleanup, and local source builds gain a portable install helper with macOS signature verification.
 
+- Fixed logout reporting success when a reachable token store refuses deletion, including permission, read-only filesystem, and I/O failures. Thanks @omarshahine.
 - Added `make build` and `make install`, with a configurable destination, directory creation, and macOS signing and verification after replacement. Thanks @omarshahine.
+- Updated Ultraviolet for terminal rendering, resize, and styled-content parsing fixes.
 - Updated repository-owned GoReleaser tooling to 2.18.1 for archive-path fixes, dependency security updates, and temporary-directory cleanup improvements.
 
 ## 0.2.4 - 2026-09-05
