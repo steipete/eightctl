@@ -36,6 +36,17 @@ jobs:
       - name: Test
         run: go test ./...
 
+      - name: Local install smoke test
+        run: |
+          INSTALL_ROOT=$(mktemp -d)
+          trap 'rm -rf "$INSTALL_ROOT"' EXIT
+          for attempt in 1 2; do
+            GOFLAGS="-ldflags=-X=github.com/steipete/eightctl/internal/cmd.Version=install-proof-$attempt" \
+              make install PREFIX="$INSTALL_ROOT/path with spaces/bin"
+            "$INSTALL_ROOT/path with spaces/bin/eightctl" --help >/dev/null
+            test "$("$INSTALL_ROOT/path with spaces/bin/eightctl" --version)" = "install-proof-$attempt"
+          done
+
       - name: Test minimum supported Go version
         env:
           GOTOOLCHAIN: go1.26.7

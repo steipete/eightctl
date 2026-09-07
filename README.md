@@ -105,11 +105,22 @@ The API is undocumented and cloud-only. The [project specification](docs/spec.md
 The preferred build toolchain is Go 1.26.8, selected by `go.mod`; Go 1.26.7 remains the supported minimum and is tested in CI. The optional package scripts use pnpm 12.3.4 with Node.js 24 or newer.
 
 ```sh
-go build ./cmd/eightctl
+make build
 go test ./...
 make coverage
 make lint
 ```
+
+`make build` writes `./eightctl`. To install a local development build, run
+`make install`; it creates `~/.local/bin` if needed. Add that directory to your
+`PATH`, or select another binary directory with
+`make install PREFIX=/usr/local/bin`.
+
+On macOS, installation ad-hoc signs and verifies the installed executable to
+avoid stale-signature launch failures after replacement. A rebuilt executable
+can still trigger a Keychain authorization prompt when accessing cached tokens;
+this install helper does not make authenticated commands prompt-free on
+unattended hosts. Published releases use the separate signed release pipeline.
 
 CI runs formatting, lint, tests, the core-package coverage gate, and a release-artifact smoke test.
 
