@@ -6,6 +6,14 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 
 ## Unreleased
 
+### Highlights
+
+Client tests keep synthetic credentials out of your persistent token stores, and refreshed dependencies improve Unicode text handling and JOSE validation.
+
+- Fixed client authentication tests writing synthetic OAuth tokens to the developer's Keychain or file-backed cache; clarified how published macOS binaries and CGO-enabled source builds select token storage. Thanks @omarshahine.
+- Updated jose2go to 1.11.0 for stricter ECDH ephemeral-key validation and go-runewidth to 0.0.30 for grapheme-aware wrapping and width-calculation improvements.
+- Refreshed Ultraviolet and Go support modules, upgraded gofumpt to 0.12.0 and pnpm to 12.4.1, and retained Go 1.26.7 and Node.js 24 as the supported minimums.
+
 ## 0.2.5 - 2026-09-07
 
 ### Highlights
