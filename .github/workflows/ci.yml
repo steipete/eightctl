@@ -6,15 +6,22 @@ on:
   pull_request:
     branches: [ main, master ]
 
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 jobs:
   lint-test:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
       - name: Set up Go
-        uses: actions/setup-go@v7.0.0
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with:
           go-version-file: go.mod
           cache: true
@@ -29,12 +36,12 @@ jobs:
           fi
 
       - name: Lint
-        uses: golangci/golangci-lint-action@v9.3.0
+        uses: golangci/golangci-lint-action@ba0d7d2ec06a0ea1cb5fa41b2e4a3ab91d21278a # v9.3.0
         with:
           version: v2.13.2
 
-      - name: Test
-        run: go test ./...
+      - name: Test with race detection
+        run: go test -race ./...
 
       - name: Local install smoke test
         run: |
@@ -47,11 +54,6 @@ jobs:
             test "$("$INSTALL_ROOT/path with spaces/bin/eightctl" --version)" = "install-proof-$attempt"
           done
 
-      - name: Test minimum supported Go version
-        env:
-          GOTOOLCHAIN: go1.26.7
-        run: go test ./...
-
       - name: Release metadata consistency
         run: ./scripts/check-release-metadata
 
@@ -59,14 +61,7 @@ jobs:
         run: ./scripts/test-release-preflight
 
       - name: Coverage
-        run: |
-          go test \
-            -coverpkg=./internal/client,./internal/config,./internal/daemon,./internal/output,./internal/tokencache \
-            ./internal/client ./internal/config ./internal/daemon ./internal/output ./internal/tokencache \
-            -coverprofile=coverage.out
-          COVERAGE=$(go tool cover -func=coverage.out | awk '/^total:/ {gsub("%", "", $3); print $3}')
-          echo "core coverage: ${COVERAGE}%"
-          awk -v coverage="$COVERAGE" 'BEGIN { exit !(coverage >= 85.0) }'
+        run: make coverage
 
       - name: Release notes smoke test
         run: |
@@ -80,7 +75,7 @@ jobs:
           fi
 
       - name: Install GoReleaser
-        uses: goreleaser/goreleaser-action@v7.2.3
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           distribution: goreleaser
           version: v2.18.1
@@ -94,3 +89,18 @@ jobs:
           ACTUAL=$("$BINARY" version)
           test "$ACTUAL" = "$EXPECTED"
           test "$("$BINARY" --version)" = "$EXPECTED"
+
+  compatibility:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        go: ["1.26.7", "1.27.1"]
+    env:
+      GOTOOLCHAIN: local
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: ${{ matrix.go }}
+      - run: go test ./...

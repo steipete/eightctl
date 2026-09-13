@@ -124,7 +124,7 @@ can still trigger a Keychain authorization prompt when accessing cached tokens;
 this install helper does not make authenticated commands prompt-free on
 unattended hosts. Published releases use the separate signed release pipeline.
 
-CI runs formatting, lint, tests, the core-package coverage gate, and a release-artifact smoke test.
+CI runs formatting, lint (including staticcheck and unused-code checks), race-enabled tests, the core-package coverage gate, and a release-artifact smoke test. Separate jobs test the minimum Go 1.26.7 and current Go 1.27.1 toolchains without automatic toolchain upgrades.
 
 ## License
 

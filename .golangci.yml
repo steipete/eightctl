@@ -8,6 +8,8 @@ linters:
   default: none
   enable:
     - govet
+    - staticcheck
+    - unused
 
 issues:
   max-issues-per-linter: 0
