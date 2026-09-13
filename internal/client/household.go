@@ -4,7 +4,6 @@ import (
 	"context"
 	"fmt"
 	"net/http"
-	"net/url"
 )
 
 type HouseholdActions struct{ c *Client }
@@ -102,32 +101,4 @@ func (h *HouseholdActions) Guests(ctx context.Context) (any, error) {
 	var res any
 	err := h.c.doApp(ctx, http.MethodGet, path, nil, nil, &res)
 	return res, err
-}
-
-func mapToValues(values map[string]string) url.Values {
-	out := make(url.Values, len(values))
-	for key, value := range values {
-		out.Set(key, value)
-	}
-	return out
-}
-
-func orderedUniqueStrings(values ...string) []string {
-	out := []string{}
-	for _, value := range values {
-		out = appendUniqueString(out, value)
-	}
-	return out
-}
-
-func appendUniqueString(existing []string, value string) []string {
-	if value == "" {
-		return existing
-	}
-	for _, current := range existing {
-		if current == value {
-			return existing
-		}
-	}
-	return append(existing, value)
 }

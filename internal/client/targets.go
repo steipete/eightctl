@@ -4,6 +4,8 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"net/url"
+	"slices"
 	"strings"
 )
 
@@ -49,9 +51,7 @@ func (c *Client) HouseholdUserTargets(ctx context.Context) ([]HouseholdUserTarge
 		} `json:"result"`
 	}
 	path := fmt.Sprintf("/devices/%s", deviceID)
-	query := mapToValues(map[string]string{
-		"filter": "leftUserId,rightUserId,awaySides",
-	})
+	query := url.Values{"filter": {"leftUserId,rightUserId,awaySides"}}
 	if err := c.do(ctx, http.MethodGet, path, query, nil, &deviceRes); err != nil {
 		return nil, err
 	}
@@ -93,6 +93,21 @@ func (c *Client) HouseholdUserTargets(ctx context.Context) ([]HouseholdUserTarge
 		targets[0].Side = "solo"
 	}
 	return targets, nil
+}
+
+func orderedUniqueStrings(values ...string) []string {
+	out := []string{}
+	for _, value := range values {
+		out = appendUniqueString(out, value)
+	}
+	return out
+}
+
+func appendUniqueString(existing []string, value string) []string {
+	if value == "" || slices.Contains(existing, value) {
+		return existing
+	}
+	return append(existing, value)
 }
 
 // sideAssignmentsFromDevice builds a userID -> side map from the /devices payload.

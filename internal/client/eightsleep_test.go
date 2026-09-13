@@ -8,6 +8,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 )
 
@@ -38,16 +39,6 @@ func mockServer(t *testing.T) (*httptest.Server, *Client) {
 			return
 		}
 		http.NotFound(w, r)
-	})
-
-	mux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
-		// first call rate limits, second succeeds
-		if r.Header.Get("X-Test-Retry") == "done" {
-			w.WriteHeader(http.StatusOK)
-			w.Write([]byte(`{"ok":true}`))
-			return
-		}
-		w.WriteHeader(http.StatusTooManyRequests)
 	})
 
 	srv := httptest.NewServer(mux)
@@ -172,35 +163,29 @@ func TestNoExplicitGzipHeader(t *testing.T) {
 }
 
 func Test429Retry(t *testing.T) {
-	count := 0
-	mux := http.NewServeMux()
-	mux.HandleFunc("/ping", func(w http.ResponseWriter, r *http.Request) {
-		count++
-		if count == 1 {
-			w.WriteHeader(http.StatusTooManyRequests)
-			return
+	synctest.Test(t, func(t *testing.T) {
+		count := 0
+		c := New("email", "pass", "uid", "", "")
+		c.token, c.tokenExp = "t", time.Now().Add(time.Hour)
+		c.HTTP = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			count++
+			code := http.StatusOK
+			if count == 1 {
+				code = http.StatusTooManyRequests
+			}
+			return &http.Response{StatusCode: code, Body: io.NopCloser(strings.NewReader("")), Header: make(http.Header)}, nil
+		})}
+		start := time.Now()
+		if err := c.do(t.Context(), http.MethodGet, "/ping", nil, nil, nil); err != nil {
+			t.Fatalf("do retry: %v", err)
 		}
-		w.WriteHeader(http.StatusOK)
+		if count != 2 {
+			t.Fatalf("expected 2 attempts, got %d", count)
+		}
+		if elapsed := time.Since(start); elapsed != 2*time.Second {
+			t.Fatalf("backoff = %v, want 2s", elapsed)
+		}
 	})
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-
-	c := New("email", "pass", "uid", "", "")
-	c.BaseURL = srv.URL
-	c.token = "t"
-	c.tokenExp = time.Now().Add(time.Hour)
-	c.HTTP = srv.Client()
-
-	start := time.Now()
-	if err := c.do(context.Background(), http.MethodGet, "/ping", nil, nil, nil); err != nil {
-		t.Fatalf("do retry: %v", err)
-	}
-	if count != 2 {
-		t.Fatalf("expected 2 attempts, got %d", count)
-	}
-	if elapsed := time.Since(start); elapsed < 2*time.Second {
-		t.Fatalf("expected backoff, got %v", elapsed)
-	}
 }
 
 func TestSetAwayMode(t *testing.T) {
@@ -297,28 +282,26 @@ func TestDeviceSides(t *testing.T) {
 }
 
 func Test429RetryCapped(t *testing.T) {
-	count := 0
-	mux := http.NewServeMux()
-	mux.HandleFunc("/always429", func(w http.ResponseWriter, r *http.Request) {
-		count++
-		w.WriteHeader(http.StatusTooManyRequests)
+	synctest.Test(t, func(t *testing.T) {
+		count := 0
+		c := New("email", "pass", "uid", "", "")
+		c.token, c.tokenExp = "t", time.Now().Add(time.Hour)
+		c.HTTP = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			count++
+			return &http.Response{StatusCode: http.StatusTooManyRequests, Body: io.NopCloser(strings.NewReader("")), Header: make(http.Header)}, nil
+		})}
+		start := time.Now()
+		err := c.do(t.Context(), http.MethodGet, "/always429", nil, nil, nil)
+		if err == nil {
+			t.Fatal("expected error after exhausting retries")
+		}
+		if count != maxRetries+1 {
+			t.Fatalf("expected %d attempts, got %d", maxRetries+1, count)
+		}
+		if elapsed := time.Since(start); elapsed != 12*time.Second {
+			t.Fatalf("total backoff = %v, want 12s", elapsed)
+		}
 	})
-	srv := httptest.NewServer(mux)
-	defer srv.Close()
-
-	c := New("email", "pass", "uid", "", "")
-	c.BaseURL = srv.URL
-	c.token = "t"
-	c.tokenExp = time.Now().Add(time.Hour)
-	c.HTTP = srv.Client()
-
-	err := c.do(context.Background(), http.MethodGet, "/always429", nil, nil, nil)
-	if err == nil {
-		t.Fatal("expected error after exhausting retries")
-	}
-	if count != maxRetries+1 {
-		t.Fatalf("expected %d attempts, got %d", maxRetries+1, count)
-	}
 }
 
 func TestSetTemperatureForUserUsesExplicitUserID(t *testing.T) {

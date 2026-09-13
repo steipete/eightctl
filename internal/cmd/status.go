@@ -30,8 +30,8 @@ var statusCmd = &cobra.Command{
 		if allSides && target != nil {
 			return fmt.Errorf("use --all-sides by itself, not with --side or --target-user-id")
 		}
-		rows := []map[string]any{}
-		headers := []string{"mode", "level"}
+		var rows []map[string]any
+		var headers []string
 		if allSides {
 			targets, err := cl.HouseholdUserTargets(context.Background())
 			if err != nil {
