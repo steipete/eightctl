@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/url"
 	"time"
+	_ "time/tzdata"
 )
 
 type trendSample struct {
@@ -28,10 +29,15 @@ func (c *Client) GetPresence(ctx context.Context, from, to, timezone string) (bo
 		return false, err
 	}
 
-	now := time.Now()
+	tz := resolveTZ(timezone)
+	location, err := time.LoadLocation(tz)
+	if err != nil {
+		return false, fmt.Errorf("load timezone %q: %w", tz, err)
+	}
+	now := time.Now().In(location)
 	from, to = resolvePresenceWindow(now, from, to)
 	q := url.Values{}
-	q.Set("tz", resolveTZ(timezone))
+	q.Set("tz", tz)
 	q.Set("from", from)
 	q.Set("to", to)
 	q.Set("include-main", "false")
@@ -50,7 +56,7 @@ func resolvePresenceWindow(now time.Time, from, to string) (string, string) {
 	const layout = "2006-01-02"
 
 	if from == "" && to == "" {
-		return now.Add(-24 * time.Hour).Format(layout), now.Format(layout)
+		return now.AddDate(0, 0, -1).Format(layout), now.Format(layout)
 	}
 	if to == "" {
 		return from, now.Format(layout)
@@ -60,7 +66,7 @@ func resolvePresenceWindow(now time.Time, from, to string) (string, string) {
 		if err != nil {
 			return from, to
 		}
-		return end.Add(-24 * time.Hour).Format(layout), to
+		return end.AddDate(0, 0, -1).Format(layout), to
 	}
 	return from, to
 }

@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"fmt"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -63,6 +64,10 @@ func extractZoneinfoSuffix(path string) string {
 	return ""
 }
 
-func currentDate() string {
-	return time.Now().Format("2006-01-02")
+func currentDate(timezone string) (string, error) {
+	location, err := time.LoadLocation(timezone)
+	if err != nil {
+		return "", fmt.Errorf("load timezone %q: %w", timezone, err)
+	}
+	return time.Now().In(location).Format(time.DateOnly), nil
 }
