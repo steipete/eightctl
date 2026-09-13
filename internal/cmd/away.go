@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/steipete/eightctl/internal/client"
-	"github.com/steipete/eightctl/internal/output"
 )
 
 var awayCmd = &cobra.Command{
@@ -97,13 +96,7 @@ func runAwayStatusWithClient(ctx context.Context, cmd *cobra.Command, cl *client
 		})
 	}
 
-	headers := []string{"side", "name", "user_id", "away"}
-	fields := viper.GetStringSlice("fields")
-	rows = output.FilterFields(rows, fields)
-	if len(fields) > 0 {
-		headers = fields
-	}
-	return output.Print(output.Format(viper.GetString("output")), headers, rows)
+	return printRows([]string{"side", "name", "user_id", "away"}, rows)
 }
 
 func runAway(cmd *cobra.Command, on bool) error {

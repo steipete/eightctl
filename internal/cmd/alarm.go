@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/steipete/eightctl/internal/client"
-	"github.com/steipete/eightctl/internal/output"
 )
 
 var alarmCmd = &cobra.Command{
@@ -39,8 +38,7 @@ var alarmListCmd = &cobra.Command{
 				"sound":     a.Sound,
 			})
 		}
-		rows = output.FilterFields(rows, viper.GetStringSlice("fields"))
-		return output.Print(output.Format(viper.GetString("output")), []string{"id", "time", "enabled", "days", "vibration", "sound"}, rows)
+		return printRows([]string{"id", "time", "enabled", "days", "vibration", "sound"}, rows)
 	},
 }
 

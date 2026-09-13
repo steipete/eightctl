@@ -92,6 +92,8 @@ eightctl daemon --config ~/.config/eightctl/config.yaml --dry-run
 
 Commands that return rows support table, JSON, and CSV output. Use `--fields` to select columns:
 
+Selected fields also define column order in table and CSV output. For commands returning a nested payload, selection applies to the top-level row fields.
+
 ```sh
 eightctl status --output json
 eightctl sleep day --date 2026-08-01 --output csv

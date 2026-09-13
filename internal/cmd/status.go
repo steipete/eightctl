@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/steipete/eightctl/internal/client"
-	"github.com/steipete/eightctl/internal/output"
 )
 
 var statusCmd = &cobra.Command{
@@ -48,12 +47,7 @@ var statusCmd = &cobra.Command{
 				return err
 			}
 		}
-		fields := viper.GetStringSlice("fields")
-		rows = output.FilterFields(rows, fields)
-		if len(fields) > 0 {
-			headers = fields
-		}
-		return output.Print(output.Format(viper.GetString("output")), headers, rows)
+		return printRows(headers, rows)
 	},
 }
 

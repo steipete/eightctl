@@ -18,6 +18,14 @@ const (
 	FormatCSV   Format = "csv"
 )
 
+// PrintFields applies one field selection to both the rows and column order.
+func PrintFields(format Format, headers []string, rows []map[string]any, fields []string) error {
+	if len(fields) > 0 {
+		headers = fields
+	}
+	return Print(format, headers, FilterFields(rows, fields))
+}
+
 // Print renders rows according to format.
 // rows: slice of maps; headers define column order.
 func Print(format Format, headers []string, rows []map[string]any) error {
