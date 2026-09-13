@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/steipete/eightctl/internal/client"
-	"github.com/steipete/eightctl/internal/output"
 )
 
 var metricsCmd = &cobra.Command{
@@ -40,7 +39,7 @@ var metricsTrendsCmd = &cobra.Command{Use: "trends", RunE: func(cmd *cobra.Comma
 	if err := cl.Metrics().Trends(context.Background(), from, to, tz, &out); err != nil {
 		return err
 	}
-	return output.Print(output.Format(viper.GetString("output")), []string{"trends"}, []map[string]any{{"trends": out}})
+	return printRows([]string{"trends"}, []map[string]any{{"trends": out}})
 }}
 
 var metricsIntervalsCmd = &cobra.Command{Use: "intervals", RunE: func(cmd *cobra.Command, args []string) error {
@@ -56,7 +55,7 @@ var metricsIntervalsCmd = &cobra.Command{Use: "intervals", RunE: func(cmd *cobra
 	if err := cl.Metrics().Intervals(context.Background(), id, &out); err != nil {
 		return err
 	}
-	return output.Print(output.Format(viper.GetString("output")), []string{"interval"}, []map[string]any{{"interval": out}})
+	return printRows([]string{"interval"}, []map[string]any{{"interval": out}})
 }}
 
 func init() {

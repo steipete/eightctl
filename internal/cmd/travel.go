@@ -8,7 +8,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/steipete/eightctl/internal/client"
-	"github.com/steipete/eightctl/internal/output"
 )
 
 var travelCmd = &cobra.Command{Use: "travel", Short: "Travel / jetlag endpoints"}
@@ -22,7 +21,7 @@ var travelTripsCmd = &cobra.Command{Use: "trips", RunE: func(cmd *cobra.Command,
 	if err != nil {
 		return err
 	}
-	return output.Print(output.Format(viper.GetString("output")), []string{"trips"}, []map[string]any{{"trips": res}})
+	return printRows([]string{"trips"}, []map[string]any{{"trips": res}})
 }}
 
 var travelCreateTripCmd = &cobra.Command{Use: "create-trip", RunE: func(cmd *cobra.Command, args []string) error {
@@ -71,7 +70,7 @@ var travelPlansCmd = &cobra.Command{Use: "plans", RunE: func(cmd *cobra.Command,
 	if err != nil {
 		return err
 	}
-	return output.Print(output.Format(viper.GetString("output")), []string{"plans"}, []map[string]any{{"plans": res}})
+	return printRows([]string{"plans"}, []map[string]any{{"plans": res}})
 }}
 
 var travelCreatePlanCmd = &cobra.Command{Use: "create-plan", RunE: func(cmd *cobra.Command, args []string) error {
@@ -125,7 +124,7 @@ var travelTasksCmd = &cobra.Command{Use: "tasks", RunE: func(cmd *cobra.Command,
 	if err != nil {
 		return err
 	}
-	return output.Print(output.Format(viper.GetString("output")), []string{"tasks"}, []map[string]any{{"tasks": res}})
+	return printRows([]string{"tasks"}, []map[string]any{{"tasks": res}})
 }}
 
 var travelAirportCmd = &cobra.Command{Use: "airport-search", RunE: func(cmd *cobra.Command, args []string) error {
@@ -138,7 +137,7 @@ var travelAirportCmd = &cobra.Command{Use: "airport-search", RunE: func(cmd *cob
 	if err != nil {
 		return err
 	}
-	return output.Print(output.Format(viper.GetString("output")), []string{"airports"}, []map[string]any{{"airports": res}})
+	return printRows([]string{"airports"}, []map[string]any{{"airports": res}})
 }}
 
 var travelFlightCmd = &cobra.Command{Use: "flight-status", RunE: func(cmd *cobra.Command, args []string) error {
@@ -151,7 +150,7 @@ var travelFlightCmd = &cobra.Command{Use: "flight-status", RunE: func(cmd *cobra
 	if err != nil {
 		return err
 	}
-	return output.Print(output.Format(viper.GetString("output")), []string{"flight"}, []map[string]any{{"flight": res}})
+	return printRows([]string{"flight"}, []map[string]any{{"flight": res}})
 }}
 
 func init() {

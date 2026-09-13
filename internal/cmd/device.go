@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/steipete/eightctl/internal/client"
-	"github.com/steipete/eightctl/internal/output"
 )
 
 var deviceCmd = &cobra.Command{Use: "device", Short: "Device info and priming"}
@@ -21,7 +20,7 @@ func deviceSimple(name string, fn func(ctx context.Context) (any, error)) *cobra
 		if err != nil {
 			return err
 		}
-		return output.Print(output.Format(viper.GetString("output")), []string{name}, []map[string]any{{name: res}})
+		return printRows([]string{name}, []map[string]any{{name: res}})
 	}}
 }
 

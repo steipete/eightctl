@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/steipete/eightctl/internal/client"
-	"github.com/steipete/eightctl/internal/output"
 )
 
 var tempModeCmd = &cobra.Command{
@@ -51,12 +50,7 @@ var tempNapStatusCmd = &cobra.Command{Use: "status", RunE: func(cmd *cobra.Comma
 	if err := cl.TempModes().NapStatus(context.Background(), &out); err != nil {
 		return err
 	}
-	rows := output.FilterFields([]map[string]any{out}, viper.GetStringSlice("fields"))
-	headers := viper.GetStringSlice("fields")
-	if len(headers) == 0 {
-		headers = mapKeys(out)
-	}
-	return output.Print(output.Format(viper.GetString("output")), headers, rows)
+	return printRows(mapKeys(out), []map[string]any{out})
 }}
 
 var (
@@ -87,12 +81,7 @@ var tempHotStatusCmd = &cobra.Command{Use: "status", RunE: func(cmd *cobra.Comma
 	if err := cl.TempModes().HotFlashStatus(context.Background(), &out); err != nil {
 		return err
 	}
-	rows := output.FilterFields([]map[string]any{out}, viper.GetStringSlice("fields"))
-	headers := viper.GetStringSlice("fields")
-	if len(headers) == 0 {
-		headers = mapKeys(out)
-	}
-	return output.Print(output.Format(viper.GetString("output")), headers, rows)
+	return printRows(mapKeys(out), []map[string]any{out})
 }}
 
 var tempEventsCmd = &cobra.Command{Use: "events", RunE: func(cmd *cobra.Command, args []string) error {
@@ -106,13 +95,7 @@ var tempEventsCmd = &cobra.Command{Use: "events", RunE: func(cmd *cobra.Command,
 	if err := cl.TempModes().TempEvents(context.Background(), from, to, &out); err != nil {
 		return err
 	}
-	rows := []map[string]any{{"events": out}}
-	rows = output.FilterFields(rows, viper.GetStringSlice("fields"))
-	headers := viper.GetStringSlice("fields")
-	if len(headers) == 0 {
-		headers = mapKeys(rows[0])
-	}
-	return output.Print(output.Format(viper.GetString("output")), headers, rows)
+	return printRows([]string{"events"}, []map[string]any{{"events": out}})
 }}
 
 func init() {

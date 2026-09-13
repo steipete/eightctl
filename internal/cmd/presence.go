@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/steipete/eightctl/internal/client"
-	"github.com/steipete/eightctl/internal/output"
 )
 
 var presenceCmd = &cobra.Command{
@@ -39,7 +38,7 @@ var presenceCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
-		return output.Print(output.Format(viper.GetString("output")), []string{"present"}, []map[string]any{{"present": present}})
+		return printRows([]string{"present"}, []map[string]any{{"present": present}})
 	},
 }
 

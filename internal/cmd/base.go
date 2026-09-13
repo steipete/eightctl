@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/steipete/eightctl/internal/client"
-	"github.com/steipete/eightctl/internal/output"
 )
 
 var baseCmd = &cobra.Command{Use: "base", Short: "Adjustable base controls"}
@@ -21,7 +20,7 @@ var baseInfoCmd = &cobra.Command{Use: "info", RunE: func(cmd *cobra.Command, arg
 	if err != nil {
 		return err
 	}
-	return output.Print(output.Format(viper.GetString("output")), []string{"info"}, []map[string]any{{"info": res}})
+	return printRows([]string{"info"}, []map[string]any{{"info": res}})
 }}
 
 var baseAngleCmd = &cobra.Command{Use: "angle", RunE: func(cmd *cobra.Command, args []string) error {
@@ -43,7 +42,7 @@ var basePresetsCmd = &cobra.Command{Use: "presets", RunE: func(cmd *cobra.Comman
 	if err != nil {
 		return err
 	}
-	return output.Print(output.Format(viper.GetString("output")), []string{"presets"}, []map[string]any{{"presets": res}})
+	return printRows([]string{"presets"}, []map[string]any{{"presets": res}})
 }}
 
 var basePresetRunCmd = &cobra.Command{Use: "preset-run", RunE: func(cmd *cobra.Command, args []string) error {

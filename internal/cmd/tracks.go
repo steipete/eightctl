@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/steipete/eightctl/internal/client"
-	"github.com/steipete/eightctl/internal/output"
 )
 
 var tracksCmd = &cobra.Command{
@@ -26,8 +25,6 @@ var tracksCmd = &cobra.Command{
 		for _, t := range tracks {
 			rows = append(rows, map[string]any{"id": t.ID, "title": t.Title, "type": t.Type})
 		}
-		fields := viper.GetStringSlice("fields")
-		rows = output.FilterFields(rows, fields)
-		return output.Print(output.Format(viper.GetString("output")), []string{"id", "title", "type"}, rows)
+		return printRows([]string{"id", "title", "type"}, rows)
 	},
 }

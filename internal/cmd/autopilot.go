@@ -7,7 +7,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/steipete/eightctl/internal/client"
-	"github.com/steipete/eightctl/internal/output"
 )
 
 var autopilotCmd = &cobra.Command{Use: "autopilot", Short: "Autopilot settings"}
@@ -46,7 +45,7 @@ func simpleAutopilot(name string, fn func(*client.Client, context.Context) (any,
 		if err != nil {
 			return err
 		}
-		return output.Print(output.Format(viper.GetString("output")), []string{name}, []map[string]any{{name: res}})
+		return printRows([]string{name}, []map[string]any{{name: res}})
 	}}
 }
 

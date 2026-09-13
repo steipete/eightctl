@@ -9,7 +9,6 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/steipete/eightctl/internal/client"
-	"github.com/steipete/eightctl/internal/output"
 )
 
 var scheduleCmd = &cobra.Command{
@@ -33,7 +32,7 @@ var scheduleListCmd = &cobra.Command{
 			}
 			return err
 		}
-		return output.Print(output.Format(viper.GetString("output")), []string{"smart"}, []map[string]any{{"smart": smart}})
+		return printRows([]string{"smart"}, []map[string]any{{"smart": smart}})
 	},
 }
 
