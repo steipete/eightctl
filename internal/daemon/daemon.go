@@ -5,11 +5,9 @@ import (
 	"fmt"
 	"math"
 	"os"
-	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/steipete/eightctl/internal/client"
@@ -33,47 +31,52 @@ type Runner struct {
 }
 
 func (r *Runner) Run(ctx context.Context) error {
+	items, err := prepareSchedule(r.Items)
+	if err != nil {
+		return err
+	}
+	if ctx.Err() != nil {
+		return nil
+	}
+	if r.Timezone == nil {
+		r.Timezone = time.Local
+	}
 	if err := r.writePID(); err != nil {
 		return err
 	}
 	defer r.removePID()
+	fmt.Printf("daemon started with %d items\n", len(items))
 
 	ticker := time.NewTicker(time.Minute)
 	defer ticker.Stop()
 
 	executed := map[string]bool{}
-	day := time.Now().Day()
-
-	sig := make(chan os.Signal, 1)
-	signal.Notify(sig, syscall.SIGINT, syscall.SIGTERM)
+	day := time.Now().In(r.Timezone).Format(time.DateOnly)
 
 	for {
 		select {
 		case <-ctx.Done():
 			return nil
-		case <-sig:
-			return nil
 		case now := <-ticker.C:
-			if now.Day() != day {
+			if date := now.In(r.Timezone).Format(time.DateOnly); date != day {
 				executed = map[string]bool{}
-				day = now.Day()
+				day = date
 			}
-			if err := r.process(now, executed); err != nil {
+			if err := r.process(ctx, now, executed, items); err != nil {
+				if ctx.Err() != nil {
+					return nil
+				}
 				return err
 			}
 		}
 	}
 }
 
-func (r *Runner) process(now time.Time, executed map[string]bool) error {
+func (r *Runner) process(ctx context.Context, now time.Time, executed map[string]bool, items []timedAction) error {
 	// Ticker timestamps use the host zone; schedules use their configured date.
 	now = now.In(r.Timezone)
-	for _, item := range r.Items {
-		t, err := time.ParseInLocation("15:04", item.Time, r.Timezone)
-		if err != nil {
-			return fmt.Errorf("parse time %s: %w", item.Time, err)
-		}
-		candidate := time.Date(now.Year(), now.Month(), now.Day(), t.Hour(), t.Minute(), 0, 0, r.Timezone)
+	for _, item := range items {
+		candidate := time.Date(now.Year(), now.Month(), now.Day(), item.hour, item.minute, 0, 0, r.Timezone)
 		if now.Before(candidate) || now.Sub(candidate) >= time.Minute {
 			continue
 		}
@@ -88,23 +91,17 @@ func (r *Runner) process(now time.Time, executed map[string]bool) error {
 		}
 		switch item.Action {
 		case "on":
-			if err := r.Client.TurnOn(context.Background()); err != nil {
+			if err := r.Client.TurnOn(ctx); err != nil {
 				return err
 			}
 		case "off":
-			if err := r.Client.TurnOff(context.Background()); err != nil {
+			if err := r.Client.TurnOff(ctx); err != nil {
 				return err
 			}
 		case "temp":
-			level, err := ParseTemp(item.Temperature)
-			if err != nil {
+			if err := r.Client.SetTemperature(ctx, item.level); err != nil {
 				return err
 			}
-			if err := r.Client.SetTemperature(context.Background(), level); err != nil {
-				return err
-			}
-		default:
-			return fmt.Errorf("unknown action %s", item.Action)
 		}
 	}
 	return nil
@@ -117,13 +114,21 @@ func (r *Runner) writePID() error {
 	if err := os.MkdirAll(filepath.Dir(r.PIDFile), 0o755); err != nil {
 		return err
 	}
-	if data, err := os.ReadFile(r.PIDFile); err == nil {
-		pid := strings.TrimSpace(string(data))
-		if pid != "" {
-			return fmt.Errorf("daemon already running (pid %s)", pid)
-		}
+	file, err := os.OpenFile(r.PIDFile, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+	if err != nil {
+		return fmt.Errorf("create daemon PID file: %w", err)
 	}
-	return os.WriteFile(r.PIDFile, []byte(fmt.Sprint(os.Getpid())), 0o600)
+	_, writeErr := fmt.Fprint(file, os.Getpid())
+	closeErr := file.Close()
+	if writeErr != nil {
+		r.removePID()
+		return writeErr
+	}
+	if closeErr != nil {
+		r.removePID()
+		return closeErr
+	}
+	return nil
 }
 
 func (r *Runner) removePID() {
