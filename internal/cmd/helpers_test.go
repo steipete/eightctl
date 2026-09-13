@@ -107,7 +107,9 @@ func TestDaemonConfigFlagUsesLoadedFile(t *testing.T) {
 		t.Fatalf("bind --config: %v", err)
 	}
 
-	initConfig()
+	if err := initConfig(); err != nil {
+		t.Fatal(err)
+	}
 	if got := viper.ConfigFileUsed(); got != path {
 		t.Fatalf("ConfigFileUsed = %q, want %q", got, path)
 	}

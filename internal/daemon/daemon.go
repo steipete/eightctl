@@ -3,9 +3,11 @@ package daemon
 import (
 	"context"
 	"fmt"
+	"math"
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -133,29 +135,24 @@ func (r *Runner) removePID() {
 // ParseTemp converts a level or an F/C temperature to a heating level approximation.
 func ParseTemp(s string) (int, error) {
 	s = strings.TrimSpace(strings.ToUpper(s))
-	if strings.HasSuffix(s, "F") {
-		v := strings.TrimSuffix(s, "F")
-		var f float64
-		_, err := fmt.Sscanf(v, "%f", &f)
-		if err != nil {
-			return 0, err
+	if strings.HasSuffix(s, "F") || strings.HasSuffix(s, "C") {
+		value, err := strconv.ParseFloat(strings.TrimSpace(s[:len(s)-1]), 64)
+		if err != nil || math.IsNaN(value) || math.IsInf(value, 0) {
+			return 0, fmt.Errorf("temperature must be a finite number followed by F or C")
 		}
-		return mapFtoLevel(f), nil
-	}
-	if strings.HasSuffix(s, "C") {
-		v := strings.TrimSuffix(s, "C")
-		var c float64
-		_, err := fmt.Sscanf(v, "%f", &c)
-		if err != nil {
-			return 0, err
+		if strings.HasSuffix(s, "F") {
+			return mapFtoLevel(value), nil
 		}
-		return mapCtoLevel(c), nil
+		return mapCtoLevel(value), nil
 	}
-	var lvl int
-	if _, err := fmt.Sscanf(s, "%d", &lvl); err == nil {
-		return lvl, nil
+	level, err := strconv.Atoi(s)
+	if err != nil {
+		return 0, fmt.Errorf("temperature must end with F/C or be an integer level")
 	}
-	return 0, fmt.Errorf("temperature must end with F/C or be level")
+	if level < -100 || level > 100 {
+		return 0, fmt.Errorf("level must be between -100 and 100")
+	}
+	return level, nil
 }
 
 // Simple linear approximations; Eight Sleep internals are non-linear, but this keeps UX consistent.

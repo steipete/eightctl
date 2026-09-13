@@ -26,6 +26,7 @@ func TestCommandFlagOwnership(t *testing.T) {
 		"autopilot level":      {autopilotLevelCmd, []string{"autopilot", "level-suggestions", "--enabled=false"}, map[string]string{"enabled": "false"}},
 		"autopilot snore":      {autopilotSnoreCmd, []string{"autopilot", "snore-mitigation", "--enabled=false"}, map[string]string{"enabled": "false"}},
 		"config fallback":      {alarmCreateCmd, []string{"alarm", "create"}, map[string]string{"time": "08:00"}},
+		"temp global flags":    {tempCmd, []string{"temp", "-40", "--side", "right", "--user-id", "selected", "--timezone", "UTC"}, map[string]string{"side": "right", "user_id": "selected", "timezone": "UTC"}},
 		"environment fallback": {alarmCreateCmd, []string{"alarm", "create"}, map[string]string{"time": "09:00"}},
 	}
 	if name := os.Getenv("EIGHTCTL_TEST_FLAG_CASE"); name != "" {

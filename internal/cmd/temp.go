@@ -17,20 +17,18 @@ var tempCmd = &cobra.Command{
 	Short:              "Set pod temperature (e.g., 68F, 20C, or heating level -100..100)",
 	DisableFlagParsing: true,
 	RunE: func(cmd *cobra.Command, args []string) error {
+		if help, _ := cmd.Flags().GetBool("help"); help {
+			return cmd.Help()
+		}
+		lvl, err := daemon.ParseTemp(cmd.Flags().Arg(0))
+		if err != nil {
+			return err
+		}
 		if err := requireAuthFields(); err != nil {
 			return err
 		}
-		tempValue, targetUserID, side, help, err := parseTempCommandArgs(args)
-		if err != nil {
-			return err
-		}
-		if help {
-			return cmd.Help()
-		}
-		lvl, err := daemon.ParseTemp(tempValue)
-		if err != nil {
-			return err
-		}
+		targetUserID, _ := cmd.Flags().GetString("target-user-id")
+		side, _ := cmd.Flags().GetString("side")
 		cl := client.New(viper.GetString("email"), viper.GetString("password"), viper.GetString("user_id"), viper.GetString("client_id"), viper.GetString("client_secret"))
 		targets, targeted, err := resolveCommandTargetValues(context.Background(), cl, targetUserID, side)
 		if err != nil {
@@ -58,51 +56,42 @@ func init() {
 	addTargetingFlags(tempCmd, true)
 }
 
-func parseTempCommandArgs(args []string) (tempValue string, targetUserID string, side string, help bool, err error) {
+// Move positional temperatures after -- while preserving option values, so pflag
+// can parse inherited flags without mistaking a negative temperature for a flag.
+func parseTemperatureFlags(cmd *cobra.Command, args []string) error {
+	cmd.Flags().AddFlagSet(cmd.InheritedFlags())
+	cmd.InitDefaultHelpFlag()
+	var options, values []string
 	for i := 0; i < len(args); i++ {
 		arg := args[i]
-		switch {
-		case arg == "-h" || arg == "--help":
-			return "", "", "", true, nil
-		case arg == "--side":
-			i++
-			if i >= len(args) {
-				return "", "", "", false, fmt.Errorf("flag needs an argument: --side")
+		if arg == "--" {
+			values = append(values, args[i+1:]...)
+			break
+		}
+		if strings.HasPrefix(arg, "-") && !isNegativeTempCandidate(arg) {
+			options = append(options, arg)
+			if name, _, hasValue := strings.Cut(strings.TrimPrefix(arg, "--"), "="); strings.HasPrefix(arg, "--") && !hasValue {
+				flag := cmd.Flags().Lookup(name)
+				if flag != nil && flag.NoOptDefVal == "" && i+1 < len(args) {
+					i++
+					options = append(options, args[i])
+				}
 			}
-			side = args[i]
-		case strings.HasPrefix(arg, "--side="):
-			side = strings.TrimPrefix(arg, "--side=")
-		case arg == "--target-user-id":
-			i++
-			if i >= len(args) {
-				return "", "", "", false, fmt.Errorf("flag needs an argument: --target-user-id")
-			}
-			targetUserID = args[i]
-		case strings.HasPrefix(arg, "--target-user-id="):
-			targetUserID = strings.TrimPrefix(arg, "--target-user-id=")
-		case arg == "--":
-			if i+1 >= len(args) {
-				return "", "", "", false, fmt.Errorf("requires exactly 1 temperature value")
-			}
-			if tempValue != "" || len(args[i+1:]) != 1 {
-				return "", "", "", false, fmt.Errorf("requires exactly 1 temperature value")
-			}
-			tempValue = args[i+1]
-			i = len(args)
-		case strings.HasPrefix(arg, "-") && !isNegativeTempCandidate(arg):
-			return "", "", "", false, fmt.Errorf("unknown flag: %s", arg)
-		default:
-			if tempValue != "" {
-				return "", "", "", false, fmt.Errorf("requires exactly 1 temperature value")
-			}
-			tempValue = arg
+		} else {
+			values = append(values, arg)
 		}
 	}
-
-	if tempValue == "" {
-		return "", "", "", false, fmt.Errorf("requires exactly 1 temperature value")
+	options = append(options, "--")
+	if err := cmd.Flags().Parse(append(options, values...)); err != nil {
+		return err
 	}
-	return tempValue, targetUserID, side, false, nil
+	if help, _ := cmd.Flags().GetBool("help"); help {
+		return nil
+	}
+	if cmd.Flags().NArg() != 1 {
+		return fmt.Errorf("requires exactly 1 temperature value")
+	}
+	return nil
 }
 
 func isNegativeTempCandidate(arg string) bool {
