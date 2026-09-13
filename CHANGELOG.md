@@ -6,6 +6,7 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 
 ## Unreleased
 
+- Updated the preferred Go toolchain to 1.27.1 while retaining Go 1.26.7 as the supported minimum.
 - Fixed malformed household user responses silently falling back to the authenticated user's side; reject missing or mismatched discovered IDs.
 - Fixed `whoami` unnecessarily logging in again instead of reusing the configured or cached user ID; an already configured ID can be printed without credentials.
 - Fixed logout leaving a usable cached session when email is omitted; reject ambiguous accounts without deleting tokens and recognize legacy/current keys for one account.
