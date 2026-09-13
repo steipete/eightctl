@@ -120,8 +120,6 @@ func init() {
 	tempHotCmd.AddCommand(tempHotOnCmd, tempHotOffCmd, tempHotStatusCmd)
 	tempEventsCmd.Flags().String("from", "", "from date (YYYY-MM-DD)")
 	tempEventsCmd.Flags().String("to", "", "to date (YYYY-MM-DD)")
-	viper.BindPFlag("from", tempEventsCmd.Flags().Lookup("from"))
-	viper.BindPFlag("to", tempEventsCmd.Flags().Lookup("to"))
 
 	tempModeCmd.AddCommand(tempNapCmd, tempHotCmd, tempEventsCmd)
 }

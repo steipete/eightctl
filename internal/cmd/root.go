@@ -32,6 +32,10 @@ func Execute() {
 
 func init() {
 	cobra.OnInitialize(initConfig)
+	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		// A flag name belongs to the executing command, not its last registered sibling.
+		return viper.BindPFlags(cmd.LocalNonPersistentFlags())
+	}
 	rootCmd.SetVersionTemplate("{{.Version}}\n")
 
 	rootCmd.PersistentFlags().String("config", "", "config file (default ~/.config/eightctl/config.yaml)")

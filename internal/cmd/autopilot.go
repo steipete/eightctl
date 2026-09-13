@@ -52,9 +52,7 @@ func simpleAutopilot(name string, fn func(*client.Client, context.Context) (any,
 
 func init() {
 	autopilotLevelCmd.Flags().Bool("enabled", true, "enable or disable")
-	viper.BindPFlag("enabled", autopilotLevelCmd.Flags().Lookup("enabled"))
 	autopilotSnoreCmd.Flags().Bool("enabled", true, "enable or disable")
-	viper.BindPFlag("enabled", autopilotSnoreCmd.Flags().Lookup("enabled"))
 
 	autopilotCmd.AddCommand(autopilotDetailsCmd, autopilotHistoryCmd, autopilotRecapCmd, autopilotLevelCmd, autopilotSnoreCmd)
 }

@@ -56,9 +56,6 @@ func init() {
 	daemonCmd.Flags().Bool("dry-run", false, "log actions without executing")
 	daemonCmd.Flags().Bool("sync-state", false, "(reserved) sync device state")
 	daemonCmd.Flags().String("pid-file", "", "pid file path (default ~/.config/eightctl/daemon.pid)")
-	viper.BindPFlag("dry-run", daemonCmd.Flags().Lookup("dry-run"))
-	viper.BindPFlag("sync-state", daemonCmd.Flags().Lookup("sync-state"))
-	viper.BindPFlag("pid-file", daemonCmd.Flags().Lookup("pid-file"))
 }
 
 func readConfigSchedule() ([]byte, error) {
