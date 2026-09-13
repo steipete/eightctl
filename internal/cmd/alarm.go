@@ -3,7 +3,6 @@ package cmd
 import (
 	"context"
 	"fmt"
-	"strings"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -158,11 +157,9 @@ func init() {
 	viper.BindPFlag("no-vibration", alarmUpdateCmd.Flags().Lookup("no-vibration"))
 	viper.BindPFlag("sound", alarmUpdateCmd.Flags().Lookup("sound"))
 
-	// add subcommands
 	alarmCmd.AddCommand(alarmListCmd, alarmCreateCmd, alarmUpdateCmd, alarmDeleteCmd, alarmSnoozeCmd, alarmDismissCmd, alarmDismissAllCmd, alarmVibeCmd)
 }
 
-// snooze
 var alarmSnoozeCmd = &cobra.Command{Use: "snooze <id>", Args: cobra.ExactArgs(1), RunE: func(cmd *cobra.Command, args []string) error {
 	if err := requireAuthFields(); err != nil {
 		return err
@@ -194,21 +191,3 @@ var alarmVibeCmd = &cobra.Command{Use: "vibration-test", RunE: func(cmd *cobra.C
 	cl := client.New(viper.GetString("email"), viper.GetString("password"), viper.GetString("user_id"), viper.GetString("client_id"), viper.GetString("client_secret"))
 	return cl.Alarms().VibrationTest(context.Background())
 }}
-
-// parseDays convenience to support comma inputs (unused, kept for future).
-func parseDays(s string) ([]int, error) {
-	parts := strings.Split(s, ",")
-	res := make([]int, 0, len(parts))
-	for _, p := range parts {
-		p = strings.TrimSpace(p)
-		if p == "" {
-			continue
-		}
-		var v int
-		if _, err := fmt.Sscanf(p, "%d", &v); err != nil {
-			return nil, err
-		}
-		res = append(res, v)
-	}
-	return res, nil
-}
