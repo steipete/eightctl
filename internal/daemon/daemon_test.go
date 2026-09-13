@@ -75,10 +75,10 @@ func TestRunnerProcessExecutesDueItemsOnce(t *testing.T) {
 		Timezone: time.UTC,
 	}
 	executed := map[string]bool{}
-	if err := r.process(now, executed); err != nil {
+	if err := processAt(&r, now, executed); err != nil {
 		t.Fatalf("process: %v", err)
 	}
-	if err := r.process(now, executed); err != nil {
+	if err := processAt(&r, now, executed); err != nil {
 		t.Fatalf("process second pass: %v", err)
 	}
 	if got, want := strings.Join(requests, ","), strings.Join([]string{
@@ -122,7 +122,7 @@ func TestRunnerProcessUsesScheduleDate(t *testing.T) {
 				DryRun:   true,
 			}
 			executed := map[string]bool{}
-			if err := r.process(tt.now, executed); err != nil {
+			if err := processAt(&r, tt.now, executed); err != nil {
 				t.Fatal(err)
 			}
 			if !executed[tt.key] {
@@ -151,16 +151,16 @@ func useTempKeyring(t *testing.T) {
 
 func TestRunnerProcessErrors(t *testing.T) {
 	r := Runner{Timezone: time.UTC}
-	if err := r.process(time.Now(), map[string]bool{}); err != nil {
+	if err := processAt(&r, time.Now(), map[string]bool{}); err != nil {
 		t.Fatalf("empty process: %v", err)
 	}
 	r.Items = []ScheduleItem{{Time: "bad", Action: "on"}}
-	if err := r.process(time.Now(), map[string]bool{}); err == nil {
+	if err := processAt(&r, time.Now(), map[string]bool{}); err == nil {
 		t.Fatalf("expected bad time error")
 	}
 	r.Items = []ScheduleItem{{Time: "07:30", Action: "bogus"}}
 	now := time.Date(2026, 4, 22, 7, 30, 0, 0, time.UTC)
-	if err := r.process(now, map[string]bool{}); err == nil {
+	if err := processAt(&r, now, map[string]bool{}); err == nil {
 		t.Fatalf("expected unknown action error")
 	}
 }
@@ -196,9 +196,49 @@ func TestRunnerRunStopsWhenContextCanceled(t *testing.T) {
 	}
 }
 
+func TestRunnerRejectsInvalidScheduleBeforeStarting(t *testing.T) {
+	for _, item := range []ScheduleItem{
+		{Time: "23:59", Action: "unknown"},
+		{Time: "23:59", Action: "temp", Temperature: "bad"},
+		{Time: "bad", Action: "on"},
+	} {
+		r := Runner{Items: []ScheduleItem{item}, DryRun: true, PIDFile: filepath.Join(t.TempDir(), "daemon.pid")}
+		ctx, cancel := context.WithCancel(t.Context())
+		cancel()
+		if err := r.Run(ctx); err == nil {
+			t.Errorf("invalid schedule accepted: %+v", item)
+		}
+		if _, err := os.Stat(r.PIDFile); !os.IsNotExist(err) {
+			t.Fatal("invalid schedule created a PID file")
+		}
+	}
+}
+
+func TestRunnerDoesNotOverwriteExistingPIDFile(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "daemon.pid")
+	if err := os.WriteFile(path, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	r := Runner{PIDFile: path}
+	if err := r.writePID(); err == nil {
+		t.Fatal("overwrote an existing PID file")
+	}
+	if data, err := os.ReadFile(path); err != nil || len(data) != 0 {
+		t.Fatalf("existing file changed: %q %v", data, err)
+	}
+}
+
 func ExampleParseTemp() {
 	level, _ := ParseTemp("68F")
 	fmt.Println(level)
 	// Output:
 	// -42
+}
+
+func processAt(r *Runner, now time.Time, executed map[string]bool) error {
+	items, err := prepareSchedule(r.Items)
+	if err != nil {
+		return err
+	}
+	return r.process(context.Background(), now, executed, items)
 }

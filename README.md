@@ -84,6 +84,8 @@ An absent default config file is optional. An explicitly selected missing file o
 
 Preview scheduled actions without changing the pod, then remove `--dry-run` when the schedule is ready:
 
+Dry-run needs no account credentials. The daemon validates every schedule entry before starting, creates its PID file exclusively, and cancels active requests on shutdown. If a previous process was killed without cleanup, remove its stale PID file only after confirming that daemon is no longer running.
+
 ```sh
 eightctl daemon --config ~/.config/eightctl/config.yaml --dry-run
 ```

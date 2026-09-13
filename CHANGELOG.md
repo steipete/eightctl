@@ -7,6 +7,7 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 ## Unreleased
 
 - Fixed logout leaving a usable cached session when email is omitted; reject ambiguous accounts without deleting tokens and recognize legacy/current keys for one account.
+- Fixed daemon startup accepting invalid schedules and racing on PID-file creation; dry-run needs no credentials, and shutdown cancels active requests.
 - Fixed `temp` ignoring persistent flags and requiring credentials for help; reject malformed temperatures and report explicit missing or malformed config files before commands run.
 - Fixed `--fields` leaving unselected columns and `<nil>` cells in table/CSV output; apply the same field selection to all row-producing commands.
 - Fixed alarm, audio, and Autopilot options being ignored when sibling commands registered flags with the same names; preserve flag, environment, and config precedence.
