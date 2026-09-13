@@ -1,4 +1,4 @@
-# eightctl Specification (Dec 2025)
+# eightctl Specification
 
 ## Purpose
 Eight Sleep Pod power/control + data-export CLI, written in Go. Targets macOS/Linux users who want a dependable terminal tool (incl. daemon) for pod automations, metrics export, and feature toggles that the mobile app exposes but the vendor does not document.
@@ -26,7 +26,7 @@ Away mode:
 
 Schedules & daemon:
 - `schedule list` (Autopilot smart schedule)
-- `daemon` (YAML-based scheduler with PID guard, dry-run, timezone override, optional state sync)
+- `daemon` (YAML-based scheduler with PID guard, dry-run, timezone override)
 
 Alarms:
 - `alarm list|create|update|delete`
@@ -83,11 +83,11 @@ Audio/temperature data helpers:
 
 ## Daemon Behavior
 - Reads YAML schedule (time, action on|off|temp, temperature with unit), minute tick, executes once per day, PID guard, SIGINT/SIGTERM graceful stop.
-- Optional state sync compares expected schedule state vs device and reconciles.
+- `--sync-state` is reserved and currently has no effect; the daemon does not reconcile device state.
 - Start with `eightctl daemon --config ~/.config/eightctl/config.yaml --dry-run` to validate scheduled actions without changing the pod.
 
 ## Testing & Quality Gates
-- `go test ./...` (fast compile checks) — run before handoff.
+- `go test ./...` runs unit and local HTTP integration tests.
 - `make coverage` enforces >=85% coverage on core packages (`internal/client`, `config`, `daemon`, `output`, `tokencache`).
 - Formatting via tracked `go tool mvdan.cc/gofumpt`; linting via golangci-lint v2.
 - Live checks: `eightctl status`, `metrics trends`, `tempmode nap status` with test creds to validate auth + userId resolution.

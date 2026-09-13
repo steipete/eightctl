@@ -84,27 +84,10 @@ func init() {
 }
 
 func initConfig() {
-	cfg, err := config.Load(viper.GetViper(), viper.GetString("config"), viper.GetBool("config-quiet"))
+	_, err := config.Load(viper.GetViper(), viper.GetString("config"), viper.GetBool("config-quiet"))
 	if err != nil {
 		log.Fatalf("config: %v", err)
 	}
-
-	// ensure env works on the main viper, too
-	viper.SetEnvPrefix("EIGHTCTL")
-	viper.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
-	viper.AutomaticEnv()
-	// merge into viper defaults
-	viper.SetDefault("email", cfg.Email)
-	viper.SetDefault("password", cfg.Password)
-	viper.SetDefault("user_id", cfg.UserID)
-	viper.SetDefault("client_id", cfg.ClientID)
-	viper.SetDefault("client_secret", cfg.ClientSecret)
-	viper.SetDefault("client_id", cfg.ClientID)
-	viper.SetDefault("client_secret", cfg.ClientSecret)
-	viper.SetDefault("timezone", cfg.Timezone)
-	viper.SetDefault("output", cfg.Output)
-	viper.SetDefault("fields", cfg.Fields)
-	viper.SetDefault("verbose", cfg.Verbose)
 
 	if err := config.WarnInsecurePerms(viper.ConfigFileUsed()); err != nil {
 		logger.Warn(err.Error())
