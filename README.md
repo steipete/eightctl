@@ -102,6 +102,8 @@ eightctl status --fields side,name,mode,level
 
 `eightctl logout` removes the selected account's local cached token from reachable stores. It returns an error if a reachable store refuses deletion, even when another store clears successfully. An unavailable store remains tolerated if another opens. Logout does not revoke tokens at Eight Sleep; an already-issued token remains valid at the service until it expires.
 
+When no email is configured, logout resolves a single cached account across reachable stores. If more than one account matches, it asks for `--email` and leaves the stores untouched. Legacy and current cache keys for the same account are removed together.
+
 The API is undocumented and cloud-only. The [project specification](docs/spec.md#reality-of-the-api) records the current contract, while [CHANGELOG.md](CHANGELOG.md) tracks endpoint removals and compatibility changes.
 
 ## Development
