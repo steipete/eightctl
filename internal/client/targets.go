@@ -2,12 +2,15 @@ package client
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"net/http"
 	"net/url"
 	"slices"
 	"strings"
 )
+
+var ErrInvalidHouseholdUser = errors.New("invalid household user response")
 
 // HouseholdUserTarget describes a user that can be targeted for side-aware actions.
 type HouseholdUserTarget struct {
@@ -80,6 +83,12 @@ func (c *Client) HouseholdUserTargets(ctx context.Context) ([]HouseholdUserTarge
 		}
 		if err := c.do(ctx, http.MethodGet, fmt.Sprintf("/users/%s", userID), nil, nil, &userRes); err != nil {
 			return nil, err
+		}
+		if userRes.User.UserID == "" {
+			return nil, fmt.Errorf("%w: household user is missing a user ID", ErrInvalidHouseholdUser)
+		}
+		if userRes.User.UserID != userID {
+			return nil, fmt.Errorf("%w: requested %q, received %q", ErrInvalidHouseholdUser, userID, userRes.User.UserID)
 		}
 		targets = append(targets, HouseholdUserTarget{
 			UserID:    userRes.User.UserID,

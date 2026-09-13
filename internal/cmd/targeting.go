@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"strings"
 
@@ -81,6 +82,9 @@ func resolveCommandTargetValues(ctx context.Context, cl *client.Client, targetUs
 	}
 
 	targets, err := cl.HouseholdUserTargets(ctx)
+	if errors.Is(err, client.ErrInvalidHouseholdUser) {
+		return nil, false, err
+	}
 	if err != nil || len(targets) == 0 {
 		return nil, false, nil
 	}
