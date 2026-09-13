@@ -55,6 +55,26 @@ func TestLoadDefaultsWhenConfigMissing(t *testing.T) {
 	}
 }
 
+func TestLoadReportsFileErrors(t *testing.T) {
+	t.Setenv("HOME", t.TempDir())
+	if _, err := Load(viper.New(), filepath.Join(t.TempDir(), "missing.yaml"), true); err == nil {
+		t.Error("explicit missing config was ignored")
+	}
+	dir := filepath.Join(os.Getenv("HOME"), ".config", "eightctl")
+	if err := os.MkdirAll(dir, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(dir, "config.yaml")
+	if err := os.WriteFile(path, []byte("schedule: ["), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	for _, selected := range []string{path, ""} {
+		if _, err := Load(viper.New(), selected, true); err == nil {
+			t.Errorf("malformed config %q was ignored", selected)
+		}
+	}
+}
+
 func TestWarnInsecurePerms(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "config.yaml")
 	if err := os.WriteFile(path, []byte("email: x"), 0o644); err != nil {

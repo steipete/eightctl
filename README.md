@@ -80,6 +80,8 @@ Keep the file readable only by your account with `chmod 600 ~/.config/eightctl/c
 
 Schedule times and dates use the configured `timezone`, even when it differs from the host timezone.
 
+An absent default config file is optional. An explicitly selected missing file or malformed YAML is an error. Temperature values must be complete integer levels from -100 to 100, or finite numbers ending in `F` or `C`; persistent flags also work after `temp`, including with negative values.
+
 Preview scheduled actions without changing the pod, then remove `--dry-run` when the schedule is ready:
 
 ```sh

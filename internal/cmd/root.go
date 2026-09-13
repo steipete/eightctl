@@ -31,10 +31,20 @@ func Execute() {
 }
 
 func init() {
-	cobra.OnInitialize(initConfig)
 	rootCmd.PersistentPreRunE = func(cmd *cobra.Command, args []string) error {
+		if cmd == tempCmd {
+			if err := parseTemperatureFlags(cmd, args); err != nil {
+				return err
+			}
+			if help, _ := cmd.Flags().GetBool("help"); help {
+				return nil
+			}
+		}
 		// A flag name belongs to the executing command, not its last registered sibling.
-		return viper.BindPFlags(cmd.LocalNonPersistentFlags())
+		if err := viper.BindPFlags(cmd.LocalNonPersistentFlags()); err != nil {
+			return err
+		}
+		return initConfig()
 	}
 	rootCmd.SetVersionTemplate("{{.Version}}\n")
 
@@ -87,10 +97,10 @@ func init() {
 	rootCmd.AddCommand(logoutCmd)
 }
 
-func initConfig() {
+func initConfig() error {
 	_, err := config.Load(viper.GetViper(), viper.GetString("config"), viper.GetBool("config-quiet"))
 	if err != nil {
-		log.Fatalf("config: %v", err)
+		return fmt.Errorf("config: %w", err)
 	}
 
 	if err := config.WarnInsecurePerms(viper.ConfigFileUsed()); err != nil {
@@ -100,6 +110,7 @@ func initConfig() {
 	if viper.GetBool("verbose") {
 		log.SetLevel(log.DebugLevel)
 	}
+	return nil
 }
 
 func requireAuthFields() error {

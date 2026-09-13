@@ -38,6 +38,14 @@ func TestParseTemp(t *testing.T) {
 	}
 }
 
+func TestParseTempRejectsMalformedValues(t *testing.T) {
+	for _, value := range []string{"20junk", "20.5", "20oopsC", "68oopsF", "NaNF", "+InfC", "-InfF", "101", "-101", ""} {
+		if level, err := ParseTemp(value); err == nil {
+			t.Errorf("ParseTemp(%q) = %d without an error", value, level)
+		}
+	}
+}
+
 func TestRunnerProcessExecutesDueItemsOnce(t *testing.T) {
 	useTempKeyring(t)
 	var requests []string
