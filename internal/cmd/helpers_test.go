@@ -141,8 +141,8 @@ func TestMapKeysAndCurrentDate(t *testing.T) {
 	if got := mapKeys(map[string]any{"b": 2, "a": 1}); !reflect.DeepEqual(got, []string{"a", "b"}) {
 		t.Fatalf("mapKeys = %#v", got)
 	}
-	if got := currentDate(); len(got) != len("2006-01-02") {
-		t.Fatalf("currentDate = %q", got)
+	if got, err := currentDate("UTC"); err != nil || len(got) != len("2006-01-02") {
+		t.Fatalf("currentDate = %q, error = %v", got, err)
 	}
 }
 

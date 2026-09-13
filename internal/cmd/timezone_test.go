@@ -2,8 +2,24 @@ package cmd
 
 import (
 	"testing"
+	"testing/synctest"
 	"time"
 )
+
+func TestCurrentDateUsesConfiguredTimezone(t *testing.T) {
+	oldLocal := time.Local
+	time.Local = time.UTC
+	t.Cleanup(func() { time.Local = oldLocal })
+	synctest.Test(t, func(t *testing.T) {
+		date, err := currentDate("America/Los_Angeles")
+		if err != nil || date != "1999-12-31" {
+			t.Fatalf("date=%s error=%v", date, err)
+		}
+		if _, err := currentDate("invalid/timezone"); err == nil {
+			t.Fatal("invalid timezone accepted")
+		}
+	})
+}
 
 func TestResolveAPITimezoneExplicit(t *testing.T) {
 	got, err := resolveAPITimezone("America/New_York")

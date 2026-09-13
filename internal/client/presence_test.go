@@ -2,11 +2,46 @@ package client
 
 import (
 	"context"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
+	"testing/synctest"
 	"time"
 )
+
+func TestPresenceDefaultsUseConfiguredDate(t *testing.T) {
+	previous := time.Local
+	time.Local = time.UTC
+	t.Cleanup(func() { time.Local = previous })
+	synctest.Test(t, func(t *testing.T) {
+		c := New("fixture", "fixture", "uid", "", "")
+		c.token, c.tokenExp = "fixture", time.Now().Add(time.Hour)
+		c.HTTP = &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+			q := req.URL.Query()
+			if q.Get("from") != "1999-12-30" || q.Get("to") != "1999-12-31" || q.Get("tz") != "America/Los_Angeles" {
+				t.Errorf("date window = %s", q.Encode())
+			}
+			return &http.Response{StatusCode: 200, Body: io.NopCloser(strings.NewReader(`{"days":[]}`))}, nil
+		})}
+		if _, err := c.GetPresence(t.Context(), "", "", "America/Los_Angeles"); err != nil {
+			t.Fatal(err)
+		}
+	})
+}
+
+func TestPresenceWindowUsesCalendarDaysAcrossDST(t *testing.T) {
+	loc, err := time.LoadLocation("America/New_York")
+	if err != nil {
+		t.Fatal(err)
+	}
+	now := time.Date(2026, 3, 9, 0, 30, 0, 0, loc)
+	from, to := resolvePresenceWindow(now, "", "")
+	if from != "2026-03-08" || to != "2026-03-09" {
+		t.Fatalf("window = %s..%s", from, to)
+	}
+}
 
 func TestPresenceFromTrendDays(t *testing.T) {
 	now := time.Date(2026, 4, 13, 12, 0, 0, 0, time.UTC)
