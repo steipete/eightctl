@@ -2,6 +2,7 @@ package cmd
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/spf13/cobra"
@@ -72,6 +73,9 @@ func defaultStatusRows(ctx context.Context, cl *client.Client, target *client.Ho
 	}
 
 	targets, err := cl.HouseholdUserTargets(ctx)
+	if errors.Is(err, client.ErrInvalidHouseholdUser) {
+		return nil, nil, err
+	}
 	if err == nil && len(targets) > 0 {
 		rows, err := householdStatusRows(ctx, cl, targets)
 		if err != nil {

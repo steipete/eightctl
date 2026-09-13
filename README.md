@@ -44,6 +44,8 @@ eightctl temp -40 --side right
 
 `status`, `on`, `off`, and `temp` act on all discovered household sides unless you select one with `--side left|right|solo` or `--target-user-id <id>`.
 
+Discovery fails explicitly if a household user response omits its ID or returns a different ID; commands do not substitute the authenticated user's side for a malformed target. `whoami` reuses the configured or cached user ID, resolving it from the API only when needed.
+
 ## Commands
 
 | Area | Commands |
