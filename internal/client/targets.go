@@ -17,7 +17,7 @@ type HouseholdUserTarget struct {
 }
 
 func (t HouseholdUserTarget) DisplayName() string {
-	name := strings.TrimSpace(strings.TrimSpace(t.FirstName + " " + t.LastName))
+	name := strings.TrimSpace(t.FirstName + " " + t.LastName)
 	if name != "" {
 		return name
 	}

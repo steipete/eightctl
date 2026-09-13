@@ -75,7 +75,5 @@ var sleepRangeCmd = &cobra.Command{
 func init() {
 	sleepRangeCmd.Flags().String("from", "", "start date YYYY-MM-DD")
 	sleepRangeCmd.Flags().String("to", "", "end date YYYY-MM-DD")
-	if sleepCmd != nil {
-		sleepCmd.AddCommand(sleepRangeCmd)
-	}
+	sleepCmd.AddCommand(sleepRangeCmd)
 }

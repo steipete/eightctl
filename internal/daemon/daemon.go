@@ -130,8 +130,7 @@ func (r *Runner) removePID() {
 	}
 }
 
-// parseTempLevel converts "68F" or "20C" to heating level approximation.
-// ParseTemp converts user input temperature string to heating level.
+// ParseTemp converts a level or an F/C temperature to a heating level approximation.
 func ParseTemp(s string) (int, error) {
 	s = strings.TrimSpace(strings.ToUpper(s))
 	if strings.HasSuffix(s, "F") {
@@ -163,23 +162,11 @@ func ParseTemp(s string) (int, error) {
 func mapFtoLevel(f float64) int {
 	// Rough map 55F -> -100, 100F -> 100.
 	scaled := (f-55)/(100-55)*200 - 100
-	if scaled < -100 {
-		scaled = -100
-	}
-	if scaled > 100 {
-		scaled = 100
-	}
-	return int(scaled)
+	return int(min(100, max(-100, scaled)))
 }
 
 func mapCtoLevel(c float64) int {
 	// 13C ~ 55F, 38C ~ 100F
 	scaled := (c-13)/(38-13)*200 - 100
-	if scaled < -100 {
-		scaled = -100
-	}
-	if scaled > 100 {
-		scaled = 100
-	}
-	return int(scaled)
+	return int(min(100, max(-100, scaled)))
 }
