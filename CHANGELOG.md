@@ -6,6 +6,8 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 
 ## Unreleased
 
+- Fixed alarm, audio, and Autopilot options being ignored when sibling commands registered flags with the same names; preserve flag, environment, and config precedence.
+
 ## 0.2.6 - 2026-09-11
 
 ### Highlights

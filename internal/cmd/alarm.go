@@ -140,22 +140,12 @@ func init() {
 	alarmCreateCmd.Flags().Bool("disabled", false, "Create disabled")
 	alarmCreateCmd.Flags().Bool("no-vibration", false, "Disable vibration")
 	alarmCreateCmd.Flags().String("sound", "", "Sound id")
-	viper.BindPFlag("time", alarmCreateCmd.Flags().Lookup("time"))
-	viper.BindPFlag("days", alarmCreateCmd.Flags().Lookup("days"))
-	viper.BindPFlag("disabled", alarmCreateCmd.Flags().Lookup("disabled"))
-	viper.BindPFlag("no-vibration", alarmCreateCmd.Flags().Lookup("no-vibration"))
-	viper.BindPFlag("sound", alarmCreateCmd.Flags().Lookup("sound"))
 
 	alarmUpdateCmd.Flags().String("time", "", "HH:MM time")
 	alarmUpdateCmd.Flags().IntSlice("days", nil, "Comma-separated days 0=Sun..6=Sat")
 	alarmUpdateCmd.Flags().Bool("enabled", true, "Set enabled true/false")
 	alarmUpdateCmd.Flags().Bool("no-vibration", false, "Disable vibration")
 	alarmUpdateCmd.Flags().String("sound", "", "Sound id")
-	viper.BindPFlag("time", alarmUpdateCmd.Flags().Lookup("time"))
-	viper.BindPFlag("days", alarmUpdateCmd.Flags().Lookup("days"))
-	viper.BindPFlag("enabled", alarmUpdateCmd.Flags().Lookup("enabled"))
-	viper.BindPFlag("no-vibration", alarmUpdateCmd.Flags().Lookup("no-vibration"))
-	viper.BindPFlag("sound", alarmUpdateCmd.Flags().Lookup("sound"))
 
 	alarmCmd.AddCommand(alarmListCmd, alarmCreateCmd, alarmUpdateCmd, alarmDeleteCmd, alarmSnoozeCmd, alarmDismissCmd, alarmDismissAllCmd, alarmVibeCmd)
 }

@@ -156,15 +156,10 @@ var audioFavRemoveCmd = &cobra.Command{Use: "remove", RunE: func(cmd *cobra.Comm
 
 func init() {
 	audioPlayCmd.Flags().String("track", "", "track ID to play")
-	viper.BindPFlag("track", audioPlayCmd.Flags().Lookup("track"))
 	audioSeekCmd.Flags().Int("position", 0, "position milliseconds")
-	viper.BindPFlag("position", audioSeekCmd.Flags().Lookup("position"))
 	audioVolumeCmd.Flags().Int("level", 50, "volume level 0-100")
-	viper.BindPFlag("level", audioVolumeCmd.Flags().Lookup("level"))
 	audioFavAddCmd.Flags().String("track", "", "track id")
-	viper.BindPFlag("track", audioFavAddCmd.Flags().Lookup("track"))
 	audioFavRemoveCmd.Flags().String("track", "", "track id")
-	viper.BindPFlag("track", audioFavRemoveCmd.Flags().Lookup("track"))
 
 	audioFavoritesCmd.AddCommand(audioFavListCmd, audioFavAddCmd, audioFavRemoveCmd)
 	audioCmd.AddCommand(audioTracksCmd, audioCategoriesCmd, audioStateCmd, audioPlayCmd, audioPauseCmd, audioSeekCmd, audioVolumeCmd, audioPairCmd, audioNextCmd, audioFavoritesCmd)

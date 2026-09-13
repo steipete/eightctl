@@ -55,6 +55,8 @@ eightctl temp -40 --side right
 
 Run `eightctl <command> --help` for flags and subcommands. The [command specification](docs/spec.md#cli-surface-implemented) covers the complete surface and current provider constraints.
 
+Options belong to the selected subcommand: for example, `eightctl alarm create --time 07:30 --days 1,2,3,4,5` and `eightctl autopilot level-suggestions --enabled=false` use the values passed to those commands.
+
 Use `eightctl away on --both` before a trip and `eightctl away off --both` to resume all household members, including when everyone is already away. If household user IDs cannot be resolved, the command reports an error.
 
 `eightctl away status` reads the cloud-reported state for all discovered household sides; use `--side` or `--target-user-id` to select one person. In contrast, `away on|off` without targeting flags changes only the authenticated user's side. The cloud is eventually consistent: readback may show the previous state after a write and does not immediately confirm that a change took effect.
