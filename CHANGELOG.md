@@ -6,6 +6,7 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 
 ## Unreleased
 
+- Fixed logout leaving a usable cached session when email is omitted; reject ambiguous accounts without deleting tokens and recognize legacy/current keys for one account.
 - Fixed alarm, audio, and Autopilot options being ignored when sibling commands registered flags with the same names; preserve flag, environment, and config precedence.
 - Fixed API retries delaying cancellation, retaining response bodies, and reusing rejected tokens when cache deletion fails.
 

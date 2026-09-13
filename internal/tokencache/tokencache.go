@@ -185,36 +185,53 @@ func loadFrom(opener func() (keyring.Keyring, error), id Identity) (*CachedToken
 // An unavailable backend is tolerated if another opens, but removal failures
 // from an opened backend are returned. This does not revoke tokens at the service.
 func Clear(id Identity) error {
-	primaryOpened, primaryErr := clearFrom(openKeyring, id)
-	fileOpened, fileErr := clearFrom(openFileKeyring, id)
-
-	if primaryOpened && primaryErr != nil {
-		return primaryErr
-	}
-	if fileOpened && fileErr != nil {
-		return fileErr
-	}
-	if !primaryOpened && !fileOpened {
-		return primaryErr
-	}
-	return nil
-}
-
-// clearFrom distinguishes an unavailable backend from an incomplete removal.
-func clearFrom(opener func() (keyring.Keyring, error), id Identity) (opened bool, err error) {
-	ring, err := opener()
-	if err != nil {
-		return false, err
-	}
-	for i, key := range []string{storageKey(id), cacheKey(id)} {
-		if err := ring.Remove(key); err != nil {
-			if isAbsentOrUnnameable(err, i == 1) {
-				continue
-			}
-			return true, err
+	var rings []keyring.Keyring
+	var openErrors []error
+	for _, opener := range []func() (keyring.Keyring, error){openKeyring, openFileKeyring} {
+		ring, err := opener()
+		if err != nil {
+			openErrors = append(openErrors, err)
+		} else {
+			rings = append(rings, ring)
 		}
 	}
-	return true, nil
+	if len(rings) == 0 {
+		return errors.Join(openErrors...)
+	}
+	if strings.TrimSpace(id.Email) == "" {
+		identities := map[string]struct{}{}
+		for _, ring := range rings {
+			matches, err := keysForClient(ring, id)
+			if err != nil {
+				return err
+			}
+			for identity := range matches {
+				identities[identity] = struct{}{}
+			}
+		}
+		if len(identities) > 1 {
+			return errors.New("multiple cached accounts; specify --email to log out")
+		}
+		for identity := range identities {
+			id.Email = strings.TrimPrefix(identity, clientKeyPrefix(id))
+		}
+	}
+	var removalErrors []error
+	for _, ring := range rings {
+		if err := clearFrom(ring, id); err != nil {
+			removalErrors = append(removalErrors, err)
+		}
+	}
+	return errors.Join(removalErrors...)
+}
+
+func clearFrom(ring keyring.Keyring, id Identity) error {
+	for i, key := range []string{storageKey(id), cacheKey(id)} {
+		if err := ring.Remove(key); err != nil && !isAbsentOrUnnameable(err, i == 1) {
+			return err
+		}
+	}
+	return nil
 }
 
 func isAbsentOrUnnameable(err error, legacy bool) bool {
@@ -266,20 +283,39 @@ func isIgnorableLegacyKeyError(err error) bool {
 // findSingleForClient finds a single cached key for the given base/client when email is unknown.
 // Returns ErrKeyNotFound if none or multiple exist.
 func findSingleForClient(ring keyring.Keyring, id Identity) (string, error) {
-	keys, err := ring.Keys()
+	matches, err := keysForClient(ring, id)
 	if err != nil {
 		return "", err
 	}
-	prefix := tokenKey + ":" + strings.TrimSuffix(strings.ToLower(strings.TrimSpace(id.BaseURL)), "/") + "|" + id.ClientID + "|"
-	matches := []string{}
-	for _, k := range keys {
-		identityKey, ok := identityKeyFromStorageKey(k)
-		if ok && strings.HasPrefix(identityKey, prefix) {
-			matches = append(matches, k)
+	if len(matches) == 1 {
+		for _, key := range matches {
+			return key, nil
 		}
 	}
-	if len(matches) == 1 {
-		return matches[0], nil
-	}
 	return "", keyring.ErrKeyNotFound
+}
+
+func clientKeyPrefix(id Identity) string {
+	id.Email = ""
+	return cacheKey(id)
+}
+
+// Group legacy and current storage keys by account, preferring the current key.
+func keysForClient(ring keyring.Keyring, id Identity) (map[string]string, error) {
+	keys, err := ring.Keys()
+	if err != nil {
+		return nil, err
+	}
+	matches := map[string]string{}
+	prefix := clientKeyPrefix(id)
+	for _, key := range keys {
+		identity, ok := identityKeyFromStorageKey(key)
+		if !ok || !strings.HasPrefix(identity, prefix) {
+			continue
+		}
+		if _, exists := matches[identity]; !exists || strings.HasPrefix(key, storageKeyV2Prefix) {
+			matches[identity] = key
+		}
+	}
+	return matches, nil
 }
