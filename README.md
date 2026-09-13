@@ -46,6 +46,8 @@ eightctl temp -40 --side right
 
 Discovery fails explicitly if a household user response omits its ID or returns a different ID; commands do not substitute the authenticated user's side for a malformed target. `whoami` reuses the configured or cached user ID, resolving it from the API only when needed.
 
+`eightctl --user-id <id> whoami` can display that configured ID offline without account credentials.
+
 ## Commands
 
 | Area | Commands |
