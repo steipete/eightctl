@@ -9,7 +9,7 @@ Eight Sleep Pod power/control + data-export CLI, written in Go. Targets macOS/Li
   - `client_id`: `0894c7f33bb94800a03f1f4df13a4f38`
   - `client_secret`: `f0954a3ed5763ba3d06834c73731a32f15f168f47d4f164751275def86db0c76`
 - Auth flow: OAuth password grant at `https://auth-api.8slp.net/v1/tokens` (form-urlencoded).
-- Throttling: 429s observed; client retries with small delay and re-auths on 401.
+- Throttling: 429s use bounded, cancellable backoff; 401s reauthenticate without reusing the rejected cached token. Responses are closed before retrying.
 
 ## Configuration & Auth
 - Config file: `~/.config/eightctl/config.yaml`; env prefix `EIGHTCTL_`; flags override env override file.
