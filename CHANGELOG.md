@@ -4,18 +4,20 @@ All notable changes to this project are documented here.
 
 The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier project history from git.
 
-## Unreleased
+## 0.2.7 - 2026-09-13
 
-- Updated the preferred Go toolchain to 1.27.1 while retaining Go 1.26.7 as the supported minimum.
-- Fixed malformed household user responses silently falling back to the authenticated user's side; reject missing or mismatched discovered IDs.
+**Highlights:** `whoami`, `logout`, `temp`, and the daemon behave correctly with cached sessions and schedules; sleep and presence dates respect your timezone and DST.
+
 - Fixed `whoami` unnecessarily logging in again instead of reusing the configured or cached user ID; an already configured ID can be printed without credentials.
 - Fixed logout leaving a usable cached session when email is omitted; reject ambiguous accounts without deleting tokens and recognize legacy/current keys for one account.
+- Fixed default sleep/presence dates using the host timezone and presence windows skipping a calendar day across DST; include timezone data in standalone builds.
 - Fixed daemon startup accepting invalid schedules and racing on PID-file creation; dry-run needs no credentials, and shutdown cancels active requests.
 - Fixed `temp` ignoring persistent flags and requiring credentials for help; reject malformed temperatures and report explicit missing or malformed config files before commands run.
-- Fixed default sleep/presence dates using the host timezone and presence windows skipping a calendar day across DST; include timezone data in standalone builds.
 - Fixed `--fields` leaving unselected columns and `<nil>` cells in table/CSV output; apply the same field selection to all row-producing commands.
 - Fixed alarm, audio, and Autopilot options being ignored when sibling commands registered flags with the same names; preserve flag, environment, and config precedence.
+- Fixed malformed household user responses silently falling back to the authenticated user's side; reject missing or mismatched discovered IDs.
 - Fixed API retries delaying cancellation, retaining response bodies, and reusing rejected tokens when cache deletion fails.
+- Updated the preferred Go toolchain to 1.27.1 while retaining Go 1.26.7 as the supported minimum.
 
 ## 0.2.6 - 2026-09-11
 
