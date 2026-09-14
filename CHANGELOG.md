@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier project history from git.
 
+## Unreleased
+
 ## 0.2.7 - 2026-09-13
 
 **Highlights:** `whoami`, `logout`, `temp`, and the daemon behave correctly with cached sessions and schedules; sleep and presence dates respect your timezone and DST.
