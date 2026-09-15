@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"io"
 	"net/http"
 	"net/url"
 	"strings"
@@ -40,9 +39,8 @@ func (c *Client) authTokenEndpoint(ctx context.Context) error {
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode >= 300 {
-		b, _ := io.ReadAll(resp.Body)
-		log.Debug("token auth failed", "status", resp.Status, "headers", resp.Header, "body", string(b))
-		return fmt.Errorf("token auth failed: %s", resp.Status)
+		log.Debug("token auth failed", "status", resp.StatusCode)
+		return fmt.Errorf("token auth failed: %d %s", resp.StatusCode, http.StatusText(resp.StatusCode))
 	}
 
 	var res struct {
@@ -87,6 +85,8 @@ func (c *Client) ensureToken(ctx context.Context) error {
 			c.UserID = cached.UserID
 		}
 		return nil
+	} else if errors.Is(err, tokencache.ErrAmbiguousAccount) {
+		return err
 	} else {
 		log.Debug("no cached token", "reason", err)
 	}

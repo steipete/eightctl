@@ -133,8 +133,8 @@ func TestNamespacingByIdentity(t *testing.T) {
 	if got, _ := Load(idC); got.Token != "token-c" {
 		t.Errorf("Load C token = %q, want token-c", got.Token)
 	}
-	if got, _ := Load(idD); got.Token != "token-d" {
-		t.Errorf("Load D token = %q, want token-d", got.Token)
+	if _, err := Load(idD); !errors.Is(err, ErrAmbiguousAccount) {
+		t.Errorf("anonymous cache entry must not bypass account selection: %v", err)
 	}
 }
 
@@ -204,8 +204,8 @@ func TestLoadWithoutEmailMultipleMatchesFails(t *testing.T) {
 	if err := Save(Identity{BaseURL: common.BaseURL, ClientID: common.ClientID, Email: "b@example.com"}, "tb", time.Now().Add(time.Hour), "ub"); err != nil {
 		t.Fatalf("save b: %v", err)
 	}
-	if _, err := Load(common); err != keyring.ErrKeyNotFound {
-		t.Fatalf("expected not found when multiple matches, got %v", err)
+	if _, err := Load(common); !errors.Is(err, ErrAmbiguousAccount) {
+		t.Fatalf("expected ambiguous account error when multiple matches, got %v", err)
 	}
 }
 

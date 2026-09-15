@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"fmt"
 	"os"
 	"strings"
@@ -127,6 +128,8 @@ func requireAuthFields() error {
 			viper.Set("user_id", cached.UserID)
 		}
 		return nil
+	} else if errors.Is(err, tokencache.ErrAmbiguousAccount) {
+		return err
 	}
 
 	missing := []string{}

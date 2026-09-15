@@ -1,6 +1,7 @@
 package cmd
 
 import (
+	"errors"
 	"path/filepath"
 	"testing"
 	"time"
@@ -11,6 +12,20 @@ import (
 	"github.com/steipete/eightctl/internal/client"
 	"github.com/steipete/eightctl/internal/tokencache"
 )
+
+func TestRequireAuthFieldsReportsAmbiguousAccounts(t *testing.T) {
+	useTempKeyring(t)
+	resetViper(t)
+	for _, email := range []string{"one@example.invalid", "two@example.invalid"} {
+		cl := client.New(email, "", "", "", "")
+		if err := tokencache.Save(cl.Identity(), "fixture", time.Now().Add(time.Hour), "uid"); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := requireAuthFields(); !errors.Is(err, tokencache.ErrAmbiguousAccount) {
+		t.Fatalf("expected actionable account selection error: %v", err)
+	}
+}
 
 func useTempKeyring(t *testing.T) func() {
 	t.Helper()

@@ -112,6 +112,8 @@ eightctl status --fields side,name,mode,level
 
 `eightctl` authenticates against Eight Sleep's OAuth service and caches tokens between commands. Published macOS binaries are built without CGO and use the file-backed cache at `~/.config/eightctl/keyring`. CGO-enabled macOS source builds prefer Keychain; other platforms use an available operating system keyring, with a file-backed fallback. Reusing cached tokens reduces login traffic, but the provider can still return rate-limit errors.
 
+Cached login without an email requires a single account across all reachable token stores. If multiple accounts are cached, select one with `--email`; no account is chosen automatically. Verbose authentication failures report the HTTP status without dumping response headers or bodies, which may contain private session data.
+
 `eightctl logout` removes the selected account's local cached token from reachable stores. It returns an error if a reachable store refuses deletion, even when another store clears successfully. An unavailable store remains tolerated if another opens. Logout does not revoke tokens at Eight Sleep; an already-issued token remains valid at the service until it expires.
 
 When no email is configured, logout resolves a single cached account across reachable stores. If more than one account matches, it asks for `--email` and leaves the stores untouched. Legacy and current cache keys for the same account are removed together.

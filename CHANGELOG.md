@@ -6,6 +6,9 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 
 ## Unreleased
 
+- Fixed cached login without an email silently choosing an account when multiple accounts exist across token stores; report an explicit account-selection error before sending requests.
+- Fixed verbose authentication failures exposing response headers and bodies that may contain session cookies or echoed credentials; retain HTTP status diagnostics.
+
 ## 0.2.7 - 2026-09-13
 
 **Highlights:** `whoami`, `logout`, `temp`, and the daemon behave correctly with cached sessions and schedules; sleep and presence dates respect your timezone and DST.
