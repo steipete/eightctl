@@ -88,6 +88,8 @@ Default sleep/presence dates also use that timezone. Presence queries default to
 
 An absent default config file is optional. An explicitly selected missing file or malformed YAML is an error. Temperature values must be complete integer levels from -100 to 100, or finite numbers ending in `F` or `C`; persistent flags also work after `temp`, including with negative values.
 
+Select a config file with `--config <path>` or `EIGHTCTL_CONFIG`; the flag takes precedence. A missing or malformed file selected through the environment is an error too.
+
 Preview scheduled actions without changing the pod, then remove `--dry-run` when the schedule is ready:
 
 Dry-run needs no account credentials. The daemon validates every schedule entry before starting, creates its PID file exclusively, and cancels active requests on shutdown. If a previous process was killed without cleanup, remove its stale PID file only after confirming that daemon is no longer running.

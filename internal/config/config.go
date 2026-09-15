@@ -30,6 +30,9 @@ func Load(v *viper.Viper, configPath string, quiet bool) (Config, error) {
 	v.SetEnvKeyReplacer(strings.NewReplacer("-", "_", ".", "_"))
 	v.AutomaticEnv()
 
+	if configPath == "" {
+		configPath = v.GetString("config")
+	}
 	if configPath != "" {
 		v.SetConfigFile(configPath)
 	} else {
