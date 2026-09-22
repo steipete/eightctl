@@ -4,12 +4,13 @@ All notable changes to this project are documented here.
 
 The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier project history from git.
 
-## Unreleased
+## 0.2.8 - 2026-09-22
 
-- Fixed daemon schedules running at the wrong hour across daylight-saving transitions; skip nonexistent clock times and execute repeated times at most once per day.
+**Highlights:** Authentication diagnostics protect session data, cached accounts require unambiguous selection, and daemon schedules follow the local clock across DST.
 
-- Fixed cached login without an email silently choosing an account when multiple accounts exist across token stores; report an explicit account-selection error before sending requests.
 - Fixed verbose authentication failures exposing response headers and bodies that may contain session cookies or echoed credentials; retain HTTP status diagnostics.
+- Fixed daemon schedules running at the wrong hour across daylight-saving transitions; skip nonexistent clock times and execute repeated times at most once per day.
+- Fixed cached login without an email silently choosing an account when multiple accounts exist across token stores; report an explicit account-selection error before sending requests.
 - Fixed `EIGHTCTL_CONFIG` being ignored on startup; load the selected file, preserve `--config` precedence, and report missing or malformed environment-selected files.
 
 ## 0.2.7 - 2026-09-13
