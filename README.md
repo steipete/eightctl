@@ -82,7 +82,7 @@ schedule:
 
 Keep the file readable only by your account with `chmod 600 ~/.config/eightctl/config.yaml`. The optional `user_id` is resolved after authentication, and the public app OAuth client is used unless `client_id` and `client_secret` are set.
 
-Schedule times and dates use the configured `timezone`, even when it differs from the host timezone.
+Schedule times and dates use the configured `timezone`, even when it differs from the host timezone. The daemon skips clock times that do not occur during a daylight-saving jump and runs repeated clock times at most once per day.
 
 Default sleep/presence dates also use that timezone. Presence queries default to yesterday through today as calendar dates, including across daylight-saving transitions. Standalone binaries include IANA timezone data.
 

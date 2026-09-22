@@ -76,17 +76,16 @@ func (r *Runner) process(ctx context.Context, now time.Time, executed map[string
 	// Ticker timestamps use the host zone; schedules use their configured date.
 	now = now.In(r.Timezone)
 	for _, item := range items {
-		candidate := time.Date(now.Year(), now.Month(), now.Day(), item.hour, item.minute, 0, 0, r.Timezone)
-		if now.Before(candidate) || now.Sub(candidate) >= time.Minute {
+		if now.Hour() != item.hour || now.Minute() != item.minute {
 			continue
 		}
-		key := candidate.Format("2006-01-02 15:04") + item.Action
+		key := now.Format("2006-01-02 15:04") + item.Action
 		if executed[key] {
 			continue
 		}
 		executed[key] = true
 		if r.DryRun {
-			fmt.Printf("DRY-RUN %s %s %s\n", candidate.Format(time.RFC3339), item.Action, item.Temperature)
+			fmt.Printf("DRY-RUN %s %s %s\n", now.Format(time.RFC3339), item.Action, item.Temperature)
 			continue
 		}
 		switch item.Action {

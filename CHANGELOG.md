@@ -6,6 +6,8 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 
 ## Unreleased
 
+- Fixed daemon schedules running at the wrong hour across daylight-saving transitions; skip nonexistent clock times and execute repeated times at most once per day.
+
 - Fixed cached login without an email silently choosing an account when multiple accounts exist across token stores; report an explicit account-selection error before sending requests.
 - Fixed verbose authentication failures exposing response headers and bodies that may contain session cookies or echoed credentials; retain HTTP status diagnostics.
 - Fixed `EIGHTCTL_CONFIG` being ignored on startup; load the selected file, preserve `--config` precedence, and report missing or malformed environment-selected files.
