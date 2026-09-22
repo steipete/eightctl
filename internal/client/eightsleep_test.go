@@ -403,8 +403,8 @@ func TestAuthTokenEndpointUsesClientCredentials(t *testing.T) {
 		}),
 	}
 
-	if err := c.authTokenEndpoint(context.Background()); err != nil {
-		t.Fatalf("authTokenEndpoint: %v", err)
+	if err := c.Authenticate(context.Background()); err != nil {
+		t.Fatalf("Authenticate: %v", err)
 	}
 	if c.token != "tok" {
 		t.Fatalf("token = %q, want tok", c.token)

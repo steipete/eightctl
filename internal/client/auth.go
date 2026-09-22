@@ -16,10 +16,6 @@ import (
 
 // Authenticate fetches a bearer token via the OAuth password-grant endpoint.
 func (c *Client) Authenticate(ctx context.Context) error {
-	return c.authTokenEndpoint(ctx)
-}
-
-func (c *Client) authTokenEndpoint(ctx context.Context) error {
 	form := url.Values{}
 	form.Set("grant_type", "password")
 	form.Set("username", c.Email)
