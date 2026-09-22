@@ -4,6 +4,8 @@ All notable changes to this project are documented here.
 
 The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier project history from git.
 
+## Unreleased
+
 ## 0.2.8 - 2026-09-22
 
 **Highlights:** Authentication diagnostics protect session data, cached accounts require unambiguous selection, and daemon schedules follow the local clock across DST.
