@@ -6,7 +6,7 @@
   "engines": {
     "node": ">=24"
   },
-  "packageManager": "pnpm@12.4.1",
+  "packageManager": "pnpm@12.5.1",
   "scripts": {
     "eightctl": "go run ./cmd/eightctl",
     "start": "go run ./cmd/eightctl",

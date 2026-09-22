@@ -124,7 +124,7 @@ The API is undocumented and cloud-only. The [project specification](docs/spec.md
 
 ## Development
 
-The preferred build toolchain is Go 1.27.1, selected by `go.mod`; Go 1.26.7 remains the supported minimum and is tested in CI. The optional package scripts use pnpm 12.4.1 with Node.js 24 or newer.
+The preferred build toolchain is Go 1.27.1, selected by `go.mod`; Go 1.26.7 remains the supported minimum and is tested in CI. The optional package scripts use pnpm 12.5.1 with Node.js 24 or newer.
 
 ```sh
 make build
