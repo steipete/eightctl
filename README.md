@@ -21,6 +21,8 @@ brew install steipete/tap/eightctl
 
 Prebuilt archives for macOS, Linux, and Windows on amd64 and arm64 are available from the [latest GitHub release](https://github.com/steipete/eightctl/releases/latest).
 
+Prebuilt macOS binaries require macOS 13 Ventura or later, matching the Go 1.27 toolchain's supported minimum.
+
 Check the installed version with `eightctl --version` or `eightctl version`.
 
 To build and install from source, use Go 1.26.7 or newer:
