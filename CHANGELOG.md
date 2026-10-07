@@ -6,6 +6,8 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 
 ## Unreleased
 
+- Updated Ultraviolet for terminal resize rendering fixes, refreshed Go support modules and pnpm to 12.9.1, and retained Go 1.26.7 and Node.js 24 as the supported minimums.
+
 ## 0.2.9 - 2026-10-01
 
 **Highlights:** Updated terminal rendering keeps wrapped hyperlinks clickable, with refreshed input handling and development tooling.
