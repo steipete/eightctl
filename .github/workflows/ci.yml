@@ -43,6 +43,9 @@ jobs:
       - name: Test with race detection
         run: go test -race ./...
 
+      - name: Check reachable vulnerabilities
+        run: go run golang.org/x/vuln/cmd/govulncheck@v1.8.0 ./...
+
       - name: Local install smoke test
         run: |
           INSTALL_ROOT=$(mktemp -d)
@@ -78,7 +81,7 @@ jobs:
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
           distribution: goreleaser
-          version: v2.18.2
+          version: v2.18.3
           install-only: true
 
       - name: Release artifact smoke test
@@ -95,7 +98,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go: ["1.26.7", "1.27.1"]
+        go: ["1.26.7", "1.27.2"]
     env:
       GOTOOLCHAIN: local
     steps:

@@ -6,6 +6,8 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 
 ## Unreleased
 
+- Updated the preferred build toolchain to Go 1.27.2 for standard-library security fixes and added reachable-vulnerability scanning to CI; retained Go 1.26.7 as the supported minimum.
+- Refreshed terminal-rendering dependencies and Go support modules, pnpm to 12.10.1, and GoReleaser to 2.18.3.
 - Updated Ultraviolet for terminal resize rendering fixes, refreshed Go support modules and pnpm to 12.9.1, and retained Go 1.26.7 and Node.js 24 as the supported minimums.
 
 ## 0.2.9 - 2026-10-01
