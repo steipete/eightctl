@@ -36,6 +36,15 @@ func (c *Client) doApp(ctx context.Context, method, path string, query url.Value
 // BaseURL-relative paths; use doURL directly for requests to other hosts
 // (e.g. the app API for away mode).
 func (c *Client) doURL(ctx context.Context, method, u string, body any, out any) error {
+	return c.doURLWithRetry(ctx, method, u, body, out, true)
+}
+
+// doAppOnce never replays a creation POST or follows redirects.
+func (c *Client) doAppOnce(ctx context.Context, path string, body any, out any) error {
+	return c.doURLWithRetry(ctx, http.MethodPost, c.AppURL+path, body, out, false)
+}
+
+func (c *Client) doURLWithRetry(ctx context.Context, method, u string, body any, out any, retry bool) error {
 	for attempt := 0; ; attempt++ {
 		if err := ctx.Err(); err != nil {
 			return err
@@ -61,9 +70,19 @@ func (c *Client) doURL(ctx context.Context, method, u string, body any, out any)
 		req.Header.Set("Connection", "keep-alive")
 		req.Header.Set("User-Agent", "okhttp/4.9.3")
 		// Leave Accept-Encoding to Go so gzip responses are decoded transparently.
-		resp, err := c.HTTP.Do(req)
+		httpClient := c.HTTP
+		if !retry {
+			once := *c.HTTP
+			once.CheckRedirect = func(_ *http.Request, _ []*http.Request) error { return http.ErrUseLastResponse }
+			httpClient = &once
+		}
+		resp, err := httpClient.Do(req)
 		if err != nil {
 			return err
+		}
+		if !retry && resp.StatusCode >= 300 {
+			resp.Body.Close()
+			return fmt.Errorf("creation returned HTTP %d", resp.StatusCode)
 		}
 		switch resp.StatusCode {
 		case http.StatusTooManyRequests:
