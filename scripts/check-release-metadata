@@ -14,4 +14,10 @@ if [ "$package_version" != "$changelog_version" ]; then
 	exit 1
 fi
 
+source_version=$(awk -F '"' '/^var Version = / { print $2; exit }' internal/cmd/version.go)
+if [ "$source_version" != "$package_version" ]; then
+	echo "source version $source_version does not match package.json version $package_version" >&2
+	exit 1
+fi
+
 echo "release metadata matches v$package_version"
