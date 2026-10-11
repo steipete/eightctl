@@ -11,6 +11,9 @@ builds:
     binary: eightctl
     ldflags:
       - -s -w -X github.com/steipete/eightctl/internal/cmd.Version={{ .Version }}
+    hooks:
+      post:
+        - cmd: 'python3 scripts/check-macos-target.py "{{ .Path }}" "{{ .Os }}"'
     env:
       - CGO_ENABLED=0
     targets:

@@ -46,6 +46,7 @@ jobs:
     with:
       version: ${{ inputs.version }}
       repository-type: personal
+      build-runner: macos
     secrets:
       MACOS_SIGNING_P12: ${{ secrets.MACOS_SIGN_P12 }}
       MACOS_SIGNING_P12_PASSWORD: ${{ secrets.MACOS_SIGN_P12_PASSWORD }}

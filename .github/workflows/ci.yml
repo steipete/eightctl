@@ -60,6 +60,9 @@ jobs:
       - name: Release metadata consistency
         run: ./scripts/check-release-metadata
 
+      - name: macOS deployment-target regression tests
+        run: python3 scripts/test-macos-target.py
+
       - name: Release preflight regression tests
         run: ./scripts/test-release-preflight
 
