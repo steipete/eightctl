@@ -7,6 +7,10 @@ on:
         description: SemVer to release
         required: true
         type: string
+      dry_run:
+        description: Build, sign and verify without creating tags or publishing
+        type: boolean
+        default: false
 
 permissions: {}
 
@@ -28,6 +32,7 @@ jobs:
 
       - name: Verify existing published release
         id: release-state
+        if: ${{ !inputs.dry_run }}
         env:
           GH_TOKEN: ${{ github.token }}
           RELEASE_VERSION: ${{ inputs.version }}
@@ -35,16 +40,17 @@ jobs:
 
   release:
     needs: preflight
-    if: needs.preflight.outputs.already-published != 'true'
+    if: inputs.dry_run || needs.preflight.outputs.already-published != 'true'
     permissions:
       actions: read
       checks: read
       contents: write
       pull-requests: write
       statuses: read
-    uses: openclaw/release-workflows/.github/workflows/release-go-cli.yml@2c9d0f1ea65d66073bc155028ed715fa7ad75fce # v1.10.1
+    uses: openclaw/release-workflows/.github/workflows/release-go-cli.yml@055922501cf194ab88a686bb6d7f4ef2904440fa # v1.11.4
     with:
       version: ${{ inputs.version }}
+      dry-run: ${{ inputs.dry_run }}
       repository-type: personal
       build-runner: macos
     secrets:
