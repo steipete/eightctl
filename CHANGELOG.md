@@ -6,6 +6,11 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 
 ## Unreleased
 
+## 0.2.11 - 2026-10-20
+
+**Highlights:** Fix certificate validation vulnerability GO-2026-6809 in release binaries.
+
+- Security: build with Go 1.27.3 to fix certificate validation vulnerability GO-2026-6809.
 - Refreshed Go support modules and pnpm to 12.11.2 while retaining Go 1.26.7 and Node.js 24 as the supported minimums.
 - Updated the shared release workflow to 1.11.4 and added signed, no-publish dry runs that verify the current `main` even when its version is already released.
 

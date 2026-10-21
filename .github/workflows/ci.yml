@@ -101,7 +101,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go: ["1.26.7", "1.27.2"]
+        go: ["1.26.7", "1.27.3"]
     env:
       GOTOOLCHAIN: local
     steps:
