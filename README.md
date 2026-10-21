@@ -126,7 +126,7 @@ The API is undocumented and cloud-only. The [project specification](docs/spec.md
 
 ## Development
 
-The preferred build toolchain is Go 1.27.2, selected by `go.mod`; use it for current standard-library security fixes. Go 1.26.7 remains the supported minimum and is tested in CI. The optional package scripts use pnpm 12.11.2 with Node.js 24 or newer.
+The preferred build toolchain is Go 1.27.3, selected by `go.mod`; use it for current standard-library security fixes. Go 1.26.7 remains the supported minimum and is tested in CI. The optional package scripts use pnpm 12.11.2 with Node.js 24 or newer.
 
 ```sh
 make build
@@ -146,7 +146,7 @@ can still trigger a Keychain authorization prompt when accessing cached tokens;
 this install helper does not make authenticated commands prompt-free on
 unattended hosts. Published releases use the separate signed release pipeline.
 
-CI runs formatting, lint (including staticcheck and unused-code checks), race-enabled tests, reachable-vulnerability scanning, the core-package coverage gate, and a release-artifact smoke test. Separate jobs test the minimum Go 1.26.7 and current Go 1.27.2 toolchains without automatic toolchain upgrades.
+CI runs formatting, lint (including staticcheck and unused-code checks), race-enabled tests, reachable-vulnerability scanning, the core-package coverage gate, and a release-artifact smoke test. Separate jobs test the minimum Go 1.26.7 and current Go 1.27.3 toolchains without automatic toolchain upgrades.
 
 Maintainers can rehearse the signed release pipeline on `main` by dispatching **Release (unified)** with the current version and `dry_run: true`. It builds, signs, and independently verifies artifacts without creating tags, publishing a release, or updating Homebrew.
 

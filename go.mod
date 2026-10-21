@@ -2,7 +2,7 @@ module github.com/steipete/eightctl
 
 go 1.26.7
 
-toolchain go1.27.2
+toolchain go1.27.3
 
 require (
 	charm.land/log/v2 v2.0.1
