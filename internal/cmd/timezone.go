@@ -27,6 +27,9 @@ func resolveAPITimezone(value string) (string, error) {
 // localIANA is overridable in tests.
 var localIANA = defaultLocalIANA
 
+// readWindowsTimeZoneKey is overridable in tests.
+var readWindowsTimeZoneKey = platformWindowsTimeZoneKey
+
 // defaultLocalIANA discovers the IANA zone name the OS considers local. Go's
 // time.Local.String() reports "Local" when TZ is unset, which the Eight Sleep
 // API rejects, so we read the platform-specific source of truth.
@@ -34,7 +37,11 @@ func defaultLocalIANA() string {
 	if tz := strings.TrimSpace(os.Getenv("TZ")); tz != "" && !strings.EqualFold(tz, "local") {
 		return tz
 	}
-	switch runtime.GOOS {
+	return ianaFromPlatform(runtime.GOOS)
+}
+
+func ianaFromPlatform(goos string) string {
+	switch goos {
 	case "darwin":
 		if target, err := os.Readlink("/etc/localtime"); err == nil {
 			if zone := extractZoneinfoSuffix(target); zone != "" {
@@ -51,6 +58,10 @@ func defaultLocalIANA() string {
 			if zone := extractZoneinfoSuffix(target); zone != "" {
 				return zone
 			}
+		}
+	case "windows":
+		if zone := ianaFromWindowsTZ(readWindowsTimeZoneKey()); zone != "" {
+			return zone
 		}
 	}
 	return ""

@@ -63,6 +63,46 @@ func TestResolveAPITimezoneFallsBackToUTCWhenLocalIsUnknown(t *testing.T) {
 	}
 }
 
+func TestIANAFromWindowsTZ(t *testing.T) {
+	if got := ianaFromWindowsTZ("Pacific Standard Time"); got != "America/Los_Angeles" {
+		t.Fatalf("ianaFromWindowsTZ(%q) = %q, want America/Los_Angeles", "Pacific Standard Time", got)
+	}
+	if got := ianaFromWindowsTZ("Not A Real Time Zone"); got != "" {
+		t.Fatalf("ianaFromWindowsTZ(%q) = %q, want empty", "Not A Real Time Zone", got)
+	}
+	if got := ianaFromWindowsTZ("   "); got != "" {
+		t.Fatalf("ianaFromWindowsTZ(%q) = %q, want empty", "   ", got)
+	}
+	for key, zone := range windowsTZToIANA {
+		if zone == "" {
+			t.Fatalf("windows zone %q maps to an empty IANA name", key)
+		}
+		if _, err := time.LoadLocation(zone); err != nil {
+			t.Fatalf("windows zone %q -> %q does not load: %v", key, zone, err)
+		}
+	}
+}
+
+func TestWindowsPlatformUsesTimeZoneKey(t *testing.T) {
+	orig := readWindowsTimeZoneKey
+	t.Cleanup(func() { readWindowsTimeZoneKey = orig })
+
+	readWindowsTimeZoneKey = func() string { return "Pacific Standard Time" }
+	if got := ianaFromPlatform("windows"); got != "America/Los_Angeles" {
+		t.Fatalf("ianaFromPlatform(windows) = %q, want America/Los_Angeles", got)
+	}
+
+	readWindowsTimeZoneKey = func() string { return "" }
+	if got := ianaFromPlatform("windows"); got != "" {
+		t.Fatalf("missing windows key = %q, want empty", got)
+	}
+
+	readWindowsTimeZoneKey = func() string { return "Not A Real Time Zone" }
+	if got := ianaFromPlatform("windows"); got != "" {
+		t.Fatalf("unknown windows key = %q, want empty", got)
+	}
+}
+
 func TestExtractZoneinfoSuffix(t *testing.T) {
 	cases := map[string]string{
 		"/var/db/timezone/zoneinfo/America/New_York":             "America/New_York",
