@@ -8,6 +8,7 @@ import (
 	"github.com/spf13/viper"
 
 	"github.com/steipete/eightctl/internal/client"
+	"github.com/steipete/eightctl/internal/output"
 )
 
 var alarmCmd = &cobra.Command{
@@ -27,6 +28,7 @@ var alarmListCmd = &cobra.Command{
 		if err != nil {
 			return err
 		}
+		format := output.Format(viper.GetString("output"))
 		rows := make([]map[string]any, 0, len(alarms))
 		for _, a := range alarms {
 			rows = append(rows, map[string]any{
@@ -35,7 +37,7 @@ var alarmListCmd = &cobra.Command{
 				"enabled":   a.Enabled,
 				"days":      a.DaysOfWeek,
 				"vibration": a.Vibration,
-				"sound":     a.Sound,
+				"sound":     alarmListSound(a.Sound, format),
 			})
 		}
 		return printRows([]string{"id", "time", "enabled", "days", "vibration", "sound"}, rows)
@@ -130,6 +132,16 @@ var alarmDeleteCmd = &cobra.Command{
 		fmt.Println("deleted")
 		return nil
 	},
+}
+
+func alarmListSound(sound *string, format output.Format) any {
+	if format == output.FormatJSON {
+		return sound
+	}
+	if sound == nil {
+		return ""
+	}
+	return *sound
 }
 
 func init() {
