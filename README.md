@@ -84,6 +84,8 @@ schedule:
 
 Keep the file readable only by your account with `chmod 600 ~/.config/eightctl/config.yaml`. The optional `user_id` is resolved after authentication, and the public app OAuth client is used unless `client_id` and `client_secret` are set.
 
+Windows system time zones are mapped to IANA names when no override is set. Unix config-file mode warnings do not apply to Windows ACLs.
+
 Schedule times and dates use the configured `timezone`, even when it differs from the host timezone. The daemon skips clock times that do not occur during a daylight-saving jump and runs repeated clock times at most once per day.
 
 Default sleep/presence dates also use that timezone. Presence queries default to yesterday through today as calendar dates, including across daylight-saving transitions. Standalone binaries include IANA timezone data.
@@ -126,7 +128,7 @@ The API is undocumented and cloud-only. The [project specification](docs/spec.md
 
 ## Development
 
-The preferred build toolchain is Go 1.27.3, selected by `go.mod`; use it for current standard-library security fixes. Go 1.26.7 remains the supported minimum and is tested in CI. The optional package scripts use pnpm 12.11.2 with Node.js 24 or newer.
+The preferred build toolchain is Go 1.27.4, selected by `go.mod`; use it for current standard-library security fixes. Go 1.26.7 remains the supported minimum and is tested in CI. The optional package scripts use pnpm 12.11.2 with Node.js 24 or newer.
 
 ```sh
 make build
@@ -146,7 +148,7 @@ can still trigger a Keychain authorization prompt when accessing cached tokens;
 this install helper does not make authenticated commands prompt-free on
 unattended hosts. Published releases use the separate signed release pipeline.
 
-CI runs formatting, lint (including staticcheck and unused-code checks), race-enabled tests, reachable-vulnerability scanning, the core-package coverage gate, and a release-artifact smoke test. Separate jobs test the minimum Go 1.26.7 and current Go 1.27.3 toolchains without automatic toolchain upgrades.
+CI runs formatting, lint (including staticcheck and unused-code checks), race-enabled tests, reachable-vulnerability scanning, the core-package coverage gate, and a release-artifact smoke test. Separate jobs test the minimum Go 1.26.7 and current Go 1.27.4 toolchains without automatic toolchain upgrades.
 
 Maintainers can rehearse the signed release pipeline on `main` by dispatching **Release (unified)** with the current version and `dry_run: true`. It builds, signs, and independently verifies artifacts without creating tags, publishing a release, or updating Homebrew.
 

@@ -6,6 +6,10 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 
 ## Unreleased
 
+- Render alarm sound IDs in table/CSV while preserving JSON string/null values. Thanks @SebTardif.
+- Resolve Windows system time zones to IANA names and avoid Unix file-mode warnings on Windows. Thanks @SebTardif.
+- Update compatible Go dependencies and use the patched Go 1.27.4 build toolchain.
+
 ## 0.2.11 - 2026-10-20
 
 **Highlights:** Fix certificate validation vulnerability GO-2026-6809 in release binaries.
