@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/spf13/viper"
@@ -69,7 +70,16 @@ func Load(v *viper.Viper, configPath string, quiet bool) (Config, error) {
 
 // WarnInsecurePerms checks if config file is too permissive.
 func WarnInsecurePerms(path string) error {
+	return warnInsecurePerms(path, runtime.GOOS)
+}
+
+func warnInsecurePerms(path, goos string) error {
 	if path == "" {
+		return nil
+	}
+	// Windows reports a normal file as mode 666, and os.Chmod 0600 does not
+	// change Mode().Perm(). Those bits are not a world-access check.
+	if goos == "windows" {
 		return nil
 	}
 	info, err := os.Stat(path)

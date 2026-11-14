@@ -23,23 +23,34 @@ var alarmListCmd = &cobra.Command{
 			return err
 		}
 		cl := client.New(viper.GetString("email"), viper.GetString("password"), viper.GetString("user_id"), viper.GetString("client_id"), viper.GetString("client_secret"))
-		alarms, err := cl.ListAlarms(context.Background())
-		if err != nil {
-			return err
-		}
-		rows := make([]map[string]any, 0, len(alarms))
-		for _, a := range alarms {
-			rows = append(rows, map[string]any{
-				"id":        a.ID,
-				"time":      a.Time,
-				"enabled":   a.Enabled,
-				"days":      a.DaysOfWeek,
-				"vibration": a.Vibration,
-				"sound":     a.Sound,
-			})
-		}
-		return printRows([]string{"id", "time", "enabled", "days", "vibration", "sound"}, rows)
+		return runAlarmListWithClient(context.Background(), cl)
 	},
+}
+
+func runAlarmListWithClient(ctx context.Context, cl *client.Client) error {
+	alarms, err := cl.ListAlarms(ctx)
+	if err != nil {
+		return err
+	}
+	rows := make([]map[string]any, 0, len(alarms))
+	for _, a := range alarms {
+		var sound any
+		if viper.GetString("output") != "json" {
+			sound = ""
+		}
+		if a.Sound != nil {
+			sound = *a.Sound
+		}
+		rows = append(rows, map[string]any{
+			"id":        a.ID,
+			"time":      a.Time,
+			"enabled":   a.Enabled,
+			"days":      a.DaysOfWeek,
+			"vibration": a.Vibration,
+			"sound":     sound,
+		})
+	}
+	return printRows([]string{"id", "time", "enabled", "days", "vibration", "sound"}, rows)
 }
 
 var alarmCreateCmd = &cobra.Command{

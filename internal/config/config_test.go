@@ -3,6 +3,7 @@ package config
 import (
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -121,7 +122,38 @@ func TestLoadReportsFileErrors(t *testing.T) {
 	}
 }
 
+func TestWarnInsecurePermsSkipsWindowsMode(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "config.yaml")
+	if err := os.WriteFile(path, []byte("email: x"), 0o666); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	if err := warnInsecurePerms(path, "windows"); err != nil {
+		t.Fatalf("windows synthetic mode warned: %v", err)
+	}
+
+	unixPath := filepath.Join(t.TempDir(), "unix.yaml")
+	if err := os.WriteFile(unixPath, []byte("email: x"), 0o644); err != nil {
+		t.Fatalf("write config: %v", err)
+	}
+	if err := os.Chmod(unixPath, 0o644); err != nil {
+		t.Fatalf("chmod: %v", err)
+	}
+	if err := warnInsecurePerms(unixPath, "linux"); err == nil {
+		t.Fatal("linux mode 644 should still warn")
+	}
+}
+
 func TestWarnInsecurePerms(t *testing.T) {
+	if runtime.GOOS == "windows" {
+		path := filepath.Join(t.TempDir(), "config.yaml")
+		if err := os.WriteFile(path, []byte("output: json"), 0o666); err != nil {
+			t.Fatal(err)
+		}
+		if err := WarnInsecurePerms(path); err != nil {
+			t.Fatal(err)
+		}
+		return
+	}
 	path := filepath.Join(t.TempDir(), "config.yaml")
 	if err := os.WriteFile(path, []byte("email: x"), 0o644); err != nil {
 		t.Fatalf("write config: %v", err)

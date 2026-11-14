@@ -101,7 +101,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        go: ["1.26.7", "1.27.3"]
+        go: ["1.26.7", "1.27.4"]
     env:
       GOTOOLCHAIN: local
     steps:
@@ -110,3 +110,18 @@ jobs:
         with:
           go-version: ${{ matrix.go }}
       - run: go test ./...
+
+  windows-proof:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: 4ed2de87da1c9170af3960eccbd9e4b7784e139f
+          path: baseline
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version: 1.27.4
+      - name: Prove Windows configuration and system timezone behavior
+        shell: pwsh
+        run: ./scripts/test-windows.ps1
