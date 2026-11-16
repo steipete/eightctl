@@ -47,7 +47,7 @@ jobs:
       contents: write
       pull-requests: write
       statuses: read
-    uses: openclaw/release-workflows/.github/workflows/release-go-cli.yml@055922501cf194ab88a686bb6d7f4ef2904440fa # v1.11.4
+    uses: openclaw/release-workflows/.github/workflows/release-go-cli.yml@9d81ab3d2877f9900ef787e6dbcf4d9af96eb013 # v1.12.1
     with:
       version: ${{ inputs.version }}
       dry-run: ${{ inputs.dry_run }}

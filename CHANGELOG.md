@@ -6,9 +6,14 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 
 ## Unreleased
 
+## 0.2.12 - 2026-11-15
+
+**Highlights:** Correct alarm sound output and Windows timezone handling, with refreshed security-patched Go builds.
+
 - Render alarm sound IDs in table/CSV while preserving JSON string/null values. Thanks @SebTardif.
 - Resolve Windows system time zones to IANA names and avoid Unix file-mode warnings on Windows. Thanks @SebTardif.
 - Update compatible Go dependencies and use the patched Go 1.27.4 build toolchain.
+- Update the shared release workflow to 1.12.1 and use xcode-27 macOS runners.
 
 ## 0.2.11 - 2026-10-20
 
