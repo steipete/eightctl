@@ -28,9 +28,24 @@ Schedules & daemon:
 - `schedule list` (Autopilot smart schedule)
 - `daemon` (YAML-based scheduler with PID guard, dry-run, timezone override)
 
-Alarms:
-- `alarm list|create|update|delete`
+Alarms (existing-command API migration remains tracked in
+[#110](https://github.com/steipete/eightctl/issues/110)):
+- `alarm list|create|create-one-off|update|delete`
 - `alarm snooze|dismiss|dismiss-all|vibration-test`
+- Experimental `alarm create-one-off` accepts `--time`, vibration settings with
+  `--vibration-level` and `--pattern`, and optional `--smart` light-sleep settings.
+  Thermal wake is disabled unless `--thermal-level` (including `0`) or an explicit
+  `one-off-thermal-level` config value is supplied; `--no-thermal` overrides both.
+  `--smart` attempts persisted Smart Alarm read-back with bounded retries and
+  reports uncertain creation instead of silently falling back to a fixed alarm.
+  Creation uses a private durable reservation and one non-retrying POST. An
+  unresolved attempt blocks further creations for the provider/target user;
+  identical confirmed retries use read-back. A deliberate next alarm requires
+  the latest confirmed `--after-attempt` token, consumed once. See the
+  [local attempt protection limits](smart-alarm-attempts.md).
+  The proposed app API contract, actual wake behavior and cleanup still need
+  [controlled-account verification](smart-alarm-verification.md) and a maintainer
+  support decision before merge. This feature does not migrate existing commands.
 
 Temperature modes & events:
 - `tempmode nap on|off|extend|status`

@@ -6,6 +6,8 @@ import (
 	"errors"
 	"net/http"
 	"time"
+
+	"github.com/steipete/eightctl/internal/alarmguard"
 )
 
 const (
@@ -31,11 +33,12 @@ type Client struct {
 	ClientSecret string
 	DeviceID     string
 
-	HTTP     *http.Client
-	BaseURL  string
-	AppURL   string
-	token    string
-	tokenExp time.Time
+	HTTP          *http.Client
+	BaseURL       string
+	AppURL        string
+	token         string
+	tokenExp      time.Time
+	alarmAttempts *alarmguard.Store
 }
 
 // New creates a Client.
