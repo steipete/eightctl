@@ -6,6 +6,8 @@ The first tagged release is 0.2.0; the 0.1.0 section reconstructs earlier projec
 
 ## Unreleased
 
+- Refresh terminal rendering and Go tooling dependencies while retaining the Go 1.26.7 minimum.
+
 ## 0.2.12 - 2026-11-15
 
 **Highlights:** Correct alarm sound output and Windows timezone handling, with refreshed security-patched Go builds.
